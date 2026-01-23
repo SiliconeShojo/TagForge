@@ -1,0 +1,193 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TagForge.ViewModels"
+        xmlns:views="using:TagForge.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
+        Width="1300" Height="850" CanResize="False" FontSize="16"
+        x:Class="TagForge.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/Logo.ico"
+        Title="TagForge"
+        TransparencyLevelHint="Mica"
+        Background="{DynamicResource AppBackgroundBrush}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:MainViewModel/>
+    </Design.DataContext>
+
+    <!-- Main Container -->
+    <Grid RowDefinitions="Auto, *, Auto">
+        
+        <!-- Custom Title Bar (Draggable) -->
+        <Grid Grid.Row="0" Height="40" Background="Transparent" ColumnDefinitions="Auto, *, Auto">
+             <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="15,0,0,0" Spacing="15">
+                 <Image Source="/Assets/Logo.ico" Width="18" Height="18" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                 <TextBlock Text="TagForge" VerticalAlignment="Center" FontWeight="Bold" FontSize="14" IsHitTestVisible="False"/>
+             </StackPanel>
+             
+             <!-- Drag Region -->
+             <Border Grid.Column="1" Background="Transparent" PointerPressed="OnDragWindow" />
+
+             <!-- Window Controls -->
+             <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,10,0" Spacing="5">
+                 <Button Classes="windowCtrl" Click="OnMinimize">
+                     <PathIcon Data="M20,14H4V10H20" Width="10" Height="2"/>
+                 </Button>
+
+                 <Button Classes="windowCtrl close" Click="OnClose">
+                     <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Width="10" Height="10"/>
+                 </Button>
+             </StackPanel>
+        </Grid>
+
+        <!-- Main Content with Fixed Sidebar -->
+        <Grid Grid.Row="1" ColumnDefinitions="70, *">
+            
+            <!-- Sidebar Navigation -->
+            <Border Grid.Column="0" Background="{DynamicResource AppBackgroundBrush}">
+                <Grid RowDefinitions="*, Auto">
+                    <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedListItem}" Background="Transparent">
+                         <ListBox.Styles>
+                           <Style Selector="ListBoxItem">
+                               <Setter Property="Padding" Value="0"/>
+                               <Setter Property="Margin" Value="10,10"/>
+                               <Setter Property="CornerRadius" Value="8"/>
+                               <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                               <Setter Property="Background" Value="Transparent"/>
+                               <Setter Property="Height" Value="50"/>
+                               <Setter Property="Width" Value="50"/>
+                           </Style>
+                           <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                               <Setter Property="Background" Value="#20FFFFFF"/>
+                           </Style>
+                           <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                               <Setter Property="Background" Value="#30FFFFFF"/>
+                               <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                           </Style>
+                         </ListBox.Styles>
+                         <ListBox.ItemTemplate>
+                             <DataTemplate>
+                                 <Panel Width="24" Height="24">
+                                     <PathIcon Data="{Binding IconData}" Width="24" Height="24" 
+                                               Foreground="{Binding $parent[ListBoxItem].IsSelected, Converter={x:Static ObjectConverters.IsNull}}" 
+                                               IsVisible="{Binding !HasCustomIcon}"/>
+                                     <Image Source="{Binding IconBitmap}" Width="24" Height="24" 
+                                            IsVisible="{Binding HasCustomIcon}"
+                                            RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                 </Panel>
+                             </DataTemplate>
+                         </ListBox.ItemTemplate>
+                     </ListBox>
+
+                     <!-- <Button Grid.Row="1" Classes="ghost" Margin="0,0,0,20">
+                         <PathIcon Data="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" Width="24" Height="24"/>
+                     </Button> -->
+                </Grid>
+            </Border>
+            
+            <!-- Content Area -->
+            <Border Grid.Column="1" Background="{DynamicResource ContentBackgroundBrush}" 
+                    CornerRadius="20,0,0,0" ClipToBounds="True">
+                <Grid>
+                    <Grid x:CompileBindings="False">
+                        <!-- Persistent Views -->
+                        <Panel IsVisible="{Binding IsGeneratorVisible, FallbackValue=False}">
+                            <views:GenerationView DataContext="{Binding GenInstance}" />
+                        </Panel>
+                        <Panel IsVisible="{Binding IsChatVisible, FallbackValue=False}">
+                            <views:ChatView DataContext="{Binding ChatInstance}" />
+                        </Panel>
+                        <Panel IsVisible="{Binding IsNetworkVisible, FallbackValue=False}">
+                            <views:AgentManagerView DataContext="{Binding NetworkInstance}" />
+                        </Panel>
+                        <Panel IsVisible="{Binding IsSystemVisible, FallbackValue=False}">
+                            <views:SettingsView DataContext="{Binding SystemInstance}" />
+                        </Panel>
+                        <Panel IsVisible="{Binding IsLogVisible, FallbackValue=False}">
+                            <views:LogView DataContext="{Binding LogInstance}" />
+                        </Panel>
+                    </Grid>
+                    
+                    <!-- Notification Overlay -->
+                    <ItemsControl ItemsSource="{Binding Notifications}" 
+                                  HorizontalAlignment="Right" 
+                                  VerticalAlignment="Top" 
+                                  Margin="0,20,20,0"
+                                  IsHitTestVisible="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{Binding BackgroundColor}" 
+                                        CornerRadius="8" 
+                                        Padding="15,10" 
+                                        Margin="0,5"
+                                        BoxShadow="0 4 20 0 #50000000">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <PathIcon Data="M11,15H13V17H11V15M11,7H13V13H11V7M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" 
+                                                  Foreground="White" Width="16" Height="16"/>
+                                        <TextBlock Text="{Binding Message}" Foreground="White" Width="200" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="#181818" Padding="15,5">
+             <Grid ColumnDefinitions="*, Auto, Auto, Auto">
+                 <StackPanel Orientation="Horizontal" Spacing="10">
+                    <PathIcon Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6Z" Width="10" Height="10" Foreground="{Binding StatusColor}"/>
+                    <TextBlock Text="{Binding StatusText}" Foreground="#888" FontSize="11" VerticalAlignment="Center"/>
+                 </StackPanel>
+                 
+                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="20,0,10,0">
+                     <PathIcon Data="M19,2H5A2,2 0 0,0 3,4V18A2,2 0 0,0 5,20H9L12,23L15,20H19A2,2 0 0,0 21,18V4A2,2 0 0,0 19,2M13.88,12.88L12,17L10.12,12.88L6,11L10.12,9.12L12,5L13.88,9.12L18,11" Width="14" Height="14" Foreground="#666"/>
+                     <TextBlock Text="Provider:" Foreground="#666" FontSize="12"/>
+                     <TextBlock Text="{Binding ActiveProviderDisplay}" Foreground="#AAA" FontSize="12"/>
+                 </StackPanel>
+
+                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="10,0">
+                     <PathIcon Data="M12,2A9,9 0 0,1 21,11H16.5A4.5,4.5 0 0,0 12,6.5V2M12,22A9,9 0 0,1 3,13H7.5A4.5,4.5 0 0,0 12,17.5V22M12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15Z" Width="14" Height="14" Foreground="#666"/>
+                     <TextBlock Text="Model:" Foreground="#666" FontSize="12"/>
+                     <TextBlock Text="{Binding ActiveModelDisplay}" Foreground="#AAA" FontSize="12" FontWeight="Bold"/>
+                 </StackPanel>
+                 
+                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" Margin="10,0,0,0">
+                     <PathIcon Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M16.29,14.71L12.41,10.83C12.33,10.75 12.23,10.68 12.11,10.63C12,10.58 11.87,10.56 11.74,10.56H8.26C8.13,10.56 8,10.58 7.89,10.63C7.77,10.68 7.67,10.75 7.59,10.83C7.5,10.91 7.44,11.01 7.4,11.13C7.36,11.24 7.34,11.37 7.34,11.5C7.34,11.63 7.36,11.76 7.4,11.87C7.44,11.99 7.5,12.09 7.59,12.17C7.67,12.25 7.77,12.32 7.89,12.37C8,12.42 8.13,12.44 8.26,12.44H11.26L15.14,16.32C15.22,16.4 15.32,16.47 15.44,16.51C15.56,16.56 15.68,16.58 15.81,16.58C15.94,16.58 16.07,16.56 16.19,16.51C16.3,16.47 16.4,16.4 16.49,16.32C16.57,16.23 16.63,16.13 16.68,16.01C16.72,15.9 16.74,15.77 16.74,15.64C16.74,15.51 16.72,15.39 16.68,15.27C16.63,15.15 16.57,15.05 16.49,14.97" Width="14" Height="14" Foreground="#555"/>
+                     <TextBlock Text="{Binding LatencyDisplay}" Foreground="{Binding LatencyColor}" FontSize="12"/>
+                 </StackPanel>
+
+             </Grid>
+        </Border>
+
+        <!-- Update Modal Overlay -->
+        <Panel Grid.Row="0" Grid.RowSpan="3" Grid.ColumnSpan="3" Background="#AA000000" IsVisible="{Binding IsUpdateModalVisible}">
+            <Border Width="500" Height="400" Background="#252525" CornerRadius="12" BoxShadow="0 10 30 0 #40000000" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Grid RowDefinitions="Auto, *, Auto" Margin="25">
+                     <StackPanel Grid.Row="0" Spacing="5">
+                         <TextBlock Text="New Update Available! 🚀" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                         <TextBlock Text="{Binding UpdateVersion}" FontSize="16" Foreground="White" Opacity="0.8"/>
+                     </StackPanel>
+                     
+                     <ScrollViewer Grid.Row="1" Margin="0,20">
+                         <TextBlock Text="{Binding UpdateChangelog}" TextWrapping="Wrap" Foreground="#DDD" FontSize="14" LineHeight="22"/>
+                     </ScrollViewer>
+                     
+                     <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="15" HorizontalAlignment="Right">
+                         <Button Content="Remind Me Later" Command="{Binding DismissUpdateCommand}" Classes="ghost" />
+                         <Button Content="Update Now" Command="{Binding PerformUpdateCommand}" Classes="accent" />
+                     </StackPanel>
+                </Grid>
+            </Border>
+        </Panel>
+
+    </Grid>
+</Window>

@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TagForge.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
+             x:DataType="vm:AgentManagerViewModel"
+             x:Class="TagForge.Views.AgentManagerView">
+  
+  <Grid Margin="20">
+      <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <!-- Header -->
+      <StackPanel Grid.Row="0" Margin="0,0,0,20">
+          <TextBlock Text="Agent Configuration" FontSize="26" FontWeight="Bold"/>
+          <TextBlock Text="Configure your AI provider connections." Foreground="#888"/>
+      </StackPanel>
+
+      <!-- Tabbed Interface -->
+      <TabControl Grid.Row="1" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+          <TabControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                  <WrapPanel />
+              </ItemsPanelTemplate>
+          </TabControl.ItemsPanel>
+          <TabControl.ItemTemplate>
+              <DataTemplate DataType="vm:AgentProfile">
+                  <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
+                       <Panel Width="16" Height="16">
+                           <PathIcon Data="{Binding IconData}" IsVisible="{Binding !HasCustomIcon}"/>
+                           <Image Source="{Binding IconBitmap}" IsVisible="{Binding HasCustomIcon}" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                       </Panel>
+                       <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                  </StackPanel>
+              </DataTemplate>
+          </TabControl.ItemTemplate>
+          <TabControl.ContentTemplate>
+              <DataTemplate DataType="vm:AgentProfile">
+                  <!-- Configuration Card -->
+                  <Border Classes="card" Margin="0,20,0,0" Background="#282828" CornerRadius="10">
+                      <Grid ColumnDefinitions="*" Margin="20">
+                          
+                          <!-- Left: Configuration Form -->
+                          <StackPanel Grid.Column="0" Spacing="20" MaxWidth="600" HorizontalAlignment="Left">
+                              <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                                  <Panel Width="32" Height="32">
+                                      <PathIcon Data="{Binding IconData}" Width="32" Height="32" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding !HasCustomIcon}"/>
+                                      <Image Source="{Binding IconBitmap}" Width="32" Height="32" IsVisible="{Binding HasCustomIcon}" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                  </Panel>
+                                  <StackPanel>
+                                      <TextBlock Text="{Binding Name}" FontSize="20" FontWeight="Bold"/>
+                                      <TextBlock Text="{Binding Provider}" Foreground="#888"/>
+                                  </StackPanel>
+                              </StackPanel>
+
+                              <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto, Auto, Auto">
+                                  
+                                  <TextBlock Text="API Key" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Width="100" FontWeight="SemiBold"/>
+                                  <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*, Auto, Auto">
+                                      <TextBox Text="{Binding ApiKey}" PasswordChar="{Binding $parent[UserControl].DataContext.MaskChar}" 
+                                               Watermark="sk-..." HorizontalAlignment="Stretch" />
+                                      <Button Grid.Column="1" Classes="ghost" Command="{Binding $parent[UserControl].DataContext.TogglePasswordCommand}" Margin="5,0,0,0">
+                                          <PathIcon Data="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" Width="16" Height="16"/>
+                                      </Button>
+                                      <Button Grid.Column="2" Margin="5,0,0,0" Classes="ghost"
+                                          Command="{Binding $parent[UserControl].DataContext.OpenUrlCommand}"
+                                          CommandParameter="{Binding HelpUrl}"
+                                          Content="Get Key" FontSize="11" Padding="8,4"/>
+                                  </Grid>
+
+                                  <TextBlock Text="Endpoint" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,15,0,0" FontWeight="SemiBold"/>
+                                  <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding EndpointUrl}" Margin="0,15,0,0"/>
+
+                                  <TextBlock Text="Model" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,15,0,0" FontWeight="SemiBold"/>
+                                  <StackPanel Grid.Row="2" Grid.Column="1" Spacing="5" Margin="0,15,0,0">
+                                      <ComboBox ItemsSource="{Binding AvailableModels}" SelectedItem="{Binding SelectedModel}" HorizontalAlignment="Stretch" PlaceholderText="Select a model..."/>
+                                      <TextBlock Text="Click 'Test Connection' to fetch models." FontSize="10" Foreground="#666"/>
+                                  </StackPanel>
+                              </Grid>
+
+                              <StackPanel Orientation="Horizontal" Spacing="15" Margin="100,20,0,0">
+                                  <Button Content="Test Connection" Classes="accent" Command="{Binding $parent[UserControl].DataContext.TestConnectionCommand}"/>
+                              </StackPanel>
+                          </StackPanel>
+
+
+
+                      </Grid>
+                  </Border>
+              </DataTemplate>
+          </TabControl.ContentTemplate>
+      </TabControl>
+  </Grid>
+</UserControl>

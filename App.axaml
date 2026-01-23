@@ -1,0 +1,127 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:TagForge"
+             x:Class="TagForge.App"
+             RequestedThemeVariant="Dark">
+             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+  
+    <Application.Styles>
+        <FluentTheme />
+
+        
+        <!-- Global Resources -->
+        <Style>
+            <Style.Resources>
+                <!-- Colors -->
+                <Color x:Key="AppBackground">#101010</Color>
+                <Color x:Key="ContentBackground">#1E1E1E</Color>
+                <Color x:Key="CardBackground">#252525</Color>
+                <Color x:Key="AccentColor">#FFD700</Color> <!-- Gold -->
+                <Color x:Key="AccentHoverColor">#FFC700</Color>
+                
+                <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackground}"/>
+                <SolidColorBrush x:Key="ContentBackgroundBrush" Color="{StaticResource ContentBackground}"/>
+                <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackground}"/>
+                <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+            </Style.Resources>
+        </Style>
+
+        <!-- Button Styles -->
+        <Style Selector="Button.accent">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AccentHoverColor}"/>
+        </Style>
+        
+        <Style Selector="Button.ghost">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#AAA"/>
+        </Style>
+        <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Window Control Buttons -->
+        <Style Selector="Button.windowCtrl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="#888"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.windowCtrl:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#33FFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.windowCtrl.close:pointerover /template/ ContentPresenter">
+             <Setter Property="Background" Value="#C42B1C"/>
+             <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Card Style -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="15"/>
+            <Setter Property="BoxShadow" Value="0 4 15 0 #20000000"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <!-- Global Font Size Increase -->
+        <Style Selector="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontFamily" Value="avares://Avalonia.Fonts.Inter/Assets#Inter"/>
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontFamily" Value="avares://Avalonia.Fonts.Inter/Assets#Inter"/>
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontFamily" Value="avares://Avalonia.Fonts.Inter/Assets#Inter"/>
+        </Style>
+        <Style Selector="SelectableTextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontFamily" Value="avares://Avalonia.Fonts.Inter/Assets#Inter"/>
+        </Style>
+
+        <Style Selector="Border.card:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.02)"/>
+        </Style>
+
+        <!-- TextBox Polish -->
+        <Style Selector="TextBox">
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#333"/>
+            <Setter Property="Background" Value="#1A1A1A"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Inter, Roboto, Helvetica Neue, sans-serif"/>
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+             <Setter Property="BorderBrush" Value="#555"/>
+        </Style>
+
+    </Application.Styles>
+</Application>

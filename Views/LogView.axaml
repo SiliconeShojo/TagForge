@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TagForge.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:DataType="vm:LogViewModel"
+             x:Class="TagForge.Views.LogView">
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header -->
+        <Grid ColumnDefinitions="*, Auto" Margin="20">
+            <StackPanel Spacing="5">
+                <TextBlock Text="System Logs" FontSize="24" FontWeight="Bold"/>
+                <TextBlock Text="Events, errors, and debug messages." Foreground="#888"/>
+            </StackPanel>
+            <Button Grid.Column="1" Content="Clear Logs" Command="{Binding ClearLogsCommand}"/>
+        </Grid>
+        
+        <!-- Log List -->
+        <Border Grid.Row="1" Background="#111" Margin="20,0,20,20" CornerRadius="8" BorderBrush="#333" BorderThickness="1">
+            <ListBox ItemsSource="{Binding Logs}" Background="Transparent">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="8,4" Margin="0,2" Background="#1A1A1A" CornerRadius="4">
+                            <Grid ColumnDefinitions="70, 70, *">
+                                <TextBlock Grid.Column="0" Text="{Binding Timestamp}" 
+                                          Foreground="#666" FontFamily="Consolas" FontSize="11"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Level}" 
+                                          Foreground="{Binding Color}" FontWeight="Bold" FontSize="12"/>
+                                <SelectableTextBlock Grid.Column="2" Text="{Binding Message}" 
+                                                    Foreground="#EEE" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+    </Grid>
+</UserControl>

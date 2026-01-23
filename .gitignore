@@ -1,0 +1,26 @@
+# Visual Studio / .NET
+.vs/
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/
+*.DotSettings.user
+
+# Mac
+.DS_Store
+
+# Publish Output (Custom build folders)
+publish/
+
+# Documentation
+RELEASE_GUIDE.md

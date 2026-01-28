@@ -12,6 +12,9 @@ namespace TagForge.Models
 
         [ObservableProperty]
         private bool _isThinking;
+
+        [ObservableProperty]
+        private bool _isLoadingModel;
         
         public DateTime Timestamp { get; set; }
         public string? Details { get; set; } 

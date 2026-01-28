@@ -6,14 +6,14 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets\Logo.ico</ApplicationIcon>
-    <Version>1.0</Version>
+    <Version>1.1</Version>
     <Title>AI Tagging Studio</Title>
     <Description>AI Tagging Studio</Description>
     <Product>AI Tagging Studio</Product>
     <AssemblyTitle>AI Tagging Studio</AssemblyTitle>
     <AssemblyProduct>AI Tagging Studio</AssemblyProduct>
-    <Authors>v1.0</Authors>
-    <Company>v1.0</Company>
+    <Authors>v1.1</Authors>
+    <Company>v1.1</Company>
     <Copyright>Copyright © 2026</Copyright>
   </PropertyGroup>
 

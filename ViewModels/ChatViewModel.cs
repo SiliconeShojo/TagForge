@@ -68,8 +68,13 @@ namespace TagForge.ViewModels
             Prompt = string.Empty;
             IsGenerating = true;
             
+            
+            _cts = new System.Threading.CancellationTokenSource();
+            
             var aiMsg = new ChatMessage("Assistant", "");
+            
             aiMsg.IsThinking = true;
+             
             Messages.Add(aiMsg);
 
             var sw = Stopwatch.StartNew();
@@ -79,6 +84,11 @@ namespace TagForge.ViewModels
                 // Background Thread for heavy lifting
                 await Task.Run(async () => 
                 {
+                    // Consumer Task: Updates UI smoothly with batching
+                    var tokenQueue = new System.Collections.Concurrent.ConcurrentQueue<string>();
+                    bool networkFinished = false;
+                    Task displayTask = null;
+
                 try 
                 {
                     var provider = _providerFactory.CreateProvider(profile.Provider);
@@ -88,11 +98,7 @@ namespace TagForge.ViewModels
                     string systemPrompt = "You are a helpful AI assistant.";
                     bool isThinking = false;
                     
-                    // Consumer Task: Updates UI smoothly with batching
-                    var tokenQueue = new System.Collections.Concurrent.ConcurrentQueue<string>();
-                    bool networkFinished = false;
-
-                    var displayTask = Task.Run(async () => 
+                    displayTask = Task.Run(async () => 
                     {
                         while (!networkFinished || !tokenQueue.IsEmpty)
                         {
@@ -123,8 +129,18 @@ namespace TagForge.ViewModels
                     });
                     
                     // Producer Loop
-                    await foreach (var token in provider.GenerateStreamingAsync(systemPrompt, userMsg.Content, profile.SelectedModel, profile.ApiKey, profile.EndpointUrl))
+                    bool firstToken = true;
+                    await foreach (var token in provider.GenerateStreamingAsync(systemPrompt, userMsg.Content, profile.SelectedModel, profile.ApiKey, profile.EndpointUrl, _cts.Token))
                     {
+                         if (firstToken)
+                         {
+                             firstToken = false;
+                             _ = Dispatcher.UIThread.InvokeAsync(() => 
+                             {
+                                 aiMsg.IsLoadingModel = false;
+                                 if (!aiMsg.IsThinking) aiMsg.IsThinking = false; // Just to ensure clean state
+                             });
+                         }
                          string tempToken = token;
                          
                          if (tempToken.Contains("<think>")) 
@@ -159,6 +175,13 @@ namespace TagForge.ViewModels
                     sw.Stop();
                     _sessionService.LastLatency = sw.ElapsedMilliseconds;
                 }
+                catch (OperationCanceledException)
+                {
+                    // Graceful cancellation
+                    networkFinished = true;
+                    Dispatcher.UIThread.Invoke(() => 
+                         Messages.Add(new ChatMessage("System", "Generation Stopped", "")));
+                }
                 catch (Exception ex)
                 {
                     Dispatcher.UIThread.Invoke(() => 
@@ -169,8 +192,26 @@ namespace TagForge.ViewModels
             finally
             {
                 IsGenerating = false;
+                _cts?.Dispose();
+                _cts = null;
+                
+                // key fix: ensure UI state is clean even if error occurred
+                Dispatcher.UIThread.InvokeAsync(() => 
+                {
+                    aiMsg.IsLoadingModel = false;
+                    aiMsg.IsThinking = false;
+                });
+                
                 SaveHistory();
             }
+        }
+
+        private System.Threading.CancellationTokenSource? _cts;
+
+        [RelayCommand]
+        private void StopGeneration()
+        {
+            _cts?.Cancel();
         }
 
         [RelayCommand]

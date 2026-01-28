@@ -15,13 +15,13 @@ namespace TagForge.Services.Providers
         private const string DefaultBaseUrl = "http://localhost:11434/api/chat";
         private const string TagsUrl = "http://localhost:11434/api/tags";
 
-        public async Task<bool> PingAsync(string apiKey, string baseUrl)
+        public async Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {
             var url = string.IsNullOrEmpty(baseUrl) ? TagsUrl : baseUrl.Replace("/chat", "/tags");
             using var client = new RestClient(url);
             var request = new RestRequest("", Method.Get);
 
-            var response = await client.ExecuteAsync(request);
+            var response = await client.ExecuteAsync(request, cancellationToken);
             
             if (!response.IsSuccessful)
             {
@@ -43,7 +43,7 @@ namespace TagForge.Services.Providers
             return true;
         }
 
-        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl)
+        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {
             var url = string.IsNullOrEmpty(baseUrl) ? DefaultBaseUrl : baseUrl;
             using var client = new RestClient(url);
@@ -66,7 +66,7 @@ namespace TagForge.Services.Providers
 
             request.AddJsonBody(payload);
 
-            var response = await client.ExecuteAsync(request);
+            var response = await client.ExecuteAsync(request, cancellationToken);
             if (!response.IsSuccessful)
             {
                 throw new Exception($"Ollama API Error: {response.Content}");
@@ -77,7 +77,7 @@ namespace TagForge.Services.Providers
             return text ?? string.Empty;
         }
 
-        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl)
+        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {
             var url = string.IsNullOrEmpty(baseUrl) ? TagsUrl : baseUrl.Replace("/chat", "/tags");
             if (url.EndsWith("/api")) url += "/tags"; // basic heuristic correction
@@ -85,7 +85,7 @@ namespace TagForge.Services.Providers
             using var client = new RestClient(url);
             var request = new RestRequest("", Method.Get);
             
-            var response = await client.ExecuteAsync(request);
+            var response = await client.ExecuteAsync(request, cancellationToken);
             var models = new List<string>();
 
             if (response.IsSuccessful)
@@ -106,7 +106,7 @@ namespace TagForge.Services.Providers
             
             return models.Count > 0 ? models : new List<string> { "llama3", "mistral", "gemma" };
         }
-        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl)
+        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
         {
             var url = string.IsNullOrEmpty(baseUrl) ? DefaultBaseUrl : baseUrl;
             using var client = new HttpClient();
@@ -128,18 +128,19 @@ namespace TagForge.Services.Providers
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Content = new StringContent(JsonConvert.SerializeObject(payload), System.Text.Encoding.UTF8, "application/json");
 
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                  var err = await response.Content.ReadAsStringAsync();
                  throw new Exception($"Ollama API Error: {err}");
             }
 
-            using var stream = await response.Content.ReadAsStreamAsync();
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream);
             
             while (!reader.EndOfStream)
             {
+                 if (cancellationToken.IsCancellationRequested) break;
                  var line = await reader.ReadLineAsync();
                  if (string.IsNullOrWhiteSpace(line)) continue;
                  
@@ -156,6 +157,28 @@ namespace TagForge.Services.Providers
                  if (!string.IsNullOrEmpty(content)) yield return content;
                  if (done) break;
             }
+        }
+        public async Task LoadModelAsync(string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        {
+            // Ollama loads model on first request or via specific endpoint. 
+            // We can send an empty keep-alive request to force load.
+            var url = string.IsNullOrEmpty(baseUrl) ? DefaultBaseUrl : baseUrl;
+            using var client = new RestClient(url);
+            var request = new RestRequest("", Method.Post);
+
+            var payload = new
+            {
+                model = string.IsNullOrEmpty(model) ? "llama3" : model,
+                keep_alive = -1 // Load and keep in memory
+            };
+
+            request.AddJsonBody(payload);
+            try 
+            {
+                // We don't care about the response much, just triggering the load
+                await client.ExecuteAsync(request, cancellationToken);
+            }
+            catch { /* Best effort */ }
         }
     }
 }

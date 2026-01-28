@@ -43,48 +43,82 @@
                   <Border Classes="card" Margin="0,20,0,0" Background="#282828" CornerRadius="10">
                       <Grid ColumnDefinitions="*" Margin="20">
                           
-                          <!-- Left: Configuration Form -->
-                          <StackPanel Grid.Column="0" Spacing="20" MaxWidth="600" HorizontalAlignment="Left">
-                              <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-                                  <Panel Width="32" Height="32">
-                                      <PathIcon Data="{Binding IconData}" Width="32" Height="32" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding !HasCustomIcon}"/>
-                                      <Image Source="{Binding IconBitmap}" Width="32" Height="32" IsVisible="{Binding HasCustomIcon}" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                  </Panel>
-                                  <StackPanel>
-                                      <TextBlock Text="{Binding Name}" FontSize="20" FontWeight="Bold"/>
-                                      <TextBlock Text="{Binding Provider}" Foreground="#888"/>
+                              <StackPanel Grid.Row="0" Spacing="25" HorizontalAlignment="Stretch">
+                                  <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                                      <Panel Width="32" Height="32">
+                                          <PathIcon Data="{Binding IconData}" Width="32" Height="32" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding !HasCustomIcon}"/>
+                                          <Image Source="{Binding IconBitmap}" Width="32" Height="32" IsVisible="{Binding HasCustomIcon}" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                      </Panel>
+                                      <StackPanel>
+                                          <TextBlock Text="{Binding Name}" FontSize="22" FontWeight="Bold"/>
+                                          <TextBlock Text="{Binding Provider}" Foreground="#888"/>
+                                      </StackPanel>
                                   </StackPanel>
-                              </StackPanel>
 
-                              <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto, Auto, Auto">
-                                  
-                                  <TextBlock Text="API Key" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Width="100" FontWeight="SemiBold"/>
-                                  <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*, Auto, Auto">
-                                      <TextBox Text="{Binding ApiKey}" PasswordChar="{Binding $parent[UserControl].DataContext.MaskChar}" 
-                                               Watermark="sk-..." HorizontalAlignment="Stretch" />
-                                      <Button Grid.Column="1" Classes="ghost" Command="{Binding $parent[UserControl].DataContext.TogglePasswordCommand}" Margin="5,0,0,0">
-                                          <PathIcon Data="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" Width="16" Height="16"/>
-                                      </Button>
-                                      <Button Grid.Column="2" Margin="5,0,0,0" Classes="ghost"
-                                          Command="{Binding $parent[UserControl].DataContext.OpenUrlCommand}"
-                                          CommandParameter="{Binding HelpUrl}"
-                                          Content="Get Key" FontSize="11" Padding="8,4"/>
+                                  <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto, Auto" Margin="0,15,0,0">
+                                      <!-- Row 0: API Key -->
+                                      <TextBlock Grid.Row="0" Grid.Column="0" Text="API Key" VerticalAlignment="Center" Width="100" FontWeight="SemiBold"
+                                                 IsVisible="{Binding IsApiKeyNeeded}" Margin="0,0,0,25"/>
+                                      <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*, Auto" Margin="0,0,0,25" IsVisible="{Binding IsApiKeyNeeded}">
+                                          <Grid Grid.Column="0" ColumnDefinitions="*, Auto">
+                                              <TextBox Text="{Binding ApiKey}" PasswordChar="{Binding $parent[UserControl].DataContext.MaskChar}" 
+                                                       Watermark="sk-..." HorizontalAlignment="Stretch" Height="45" VerticalContentAlignment="Center"/>
+                                              <Button Grid.Column="1" Classes="ghost" Command="{Binding $parent[UserControl].DataContext.TogglePasswordCommand}" 
+                                                      Margin="-35,0,0,0" Background="Transparent" Width="35" Height="45">
+                                                  <PathIcon Data="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" Width="18" Height="18"/>
+                                              </Button>
+                                          </Grid>
+                                          <Button Grid.Column="1" Margin="10,0,0,0" Background="#E65100" Foreground="White"
+                                              Command="{Binding $parent[UserControl].DataContext.OpenUrlCommand}"
+                                              CommandParameter="{Binding HelpUrl}"
+                                              ToolTip.Tip="Get API Key" Height="45" Width="120" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                                               <StackPanel Orientation="Horizontal" Spacing="8">
+                                                   <PathIcon Data="M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z" Width="16" Height="16"/>
+                                                   <TextBlock Text="Get Key" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                               </StackPanel>
+                                          </Button>
+                                      </Grid>
+
+                                      <!-- Row 1: Endpoint -->
+                                      <TextBlock Grid.Row="1" Grid.Column="0" Text="Endpoint" VerticalAlignment="Center" Width="100" FontWeight="SemiBold" Margin="0,0,0,25"/>
+                                      <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*, Auto" Margin="0,0,0,25">
+                                          <TextBox Grid.Column="0" Text="{Binding EndpointUrl}" Margin="0,0,10,0" Height="45" VerticalContentAlignment="Center"/>
+                                          <Button Grid.Column="1" Background="#2E7D32" Foreground="White" Command="{Binding $parent[UserControl].DataContext.TestConnectionCommand}" 
+                                                  ToolTip.Tip="Ping Connection" Height="45" Width="120" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                                              <StackPanel Orientation="Horizontal" Spacing="8">
+                                                   <PathIcon Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z" Width="16" Height="16"/>
+                                                   <TextBlock Text="Ping" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                              </StackPanel>
+                                          </Button>
+                                      </Grid>
+
+                                      <!-- Row 2: Model -->
+                                      <TextBlock Grid.Row="2" Grid.Column="0" Text="Model" VerticalAlignment="Center" Width="100" FontWeight="SemiBold"/>
+                                      <StackPanel Grid.Row="2" Grid.Column="1">
+                                          <Grid ColumnDefinitions="*, Auto">
+                                              <Grid Grid.Column="0" ColumnDefinitions="*, Auto">
+                                                  <AutoCompleteBox Name="ModelSelector" Grid.Column="0" ItemsSource="{Binding AvailableModels}" SelectedItem="{Binding SelectedModel}" 
+                                                                   HorizontalAlignment="Stretch" Watermark="Select or type model..." FilterMode="Contains" MinimumPrefixLength="0"
+                                                                   TextChanged="ModelSelector_TextChanged" Height="45"/>
+                                                  <Button Grid.Column="1" Classes="ghost" Background="Transparent" Margin="-35,0,0,0" ToolTip.Tip="Show All Models"
+                                                          Click="ToggleModelDropdown" Width="35" Height="45">
+                                                      <PathIcon Data="M7,10L12,15L17,10H7Z" Width="12" Height="12"/>
+                                                  </Button>
+                                              </Grid>
+                                              <Button Grid.Column="1" Background="#0277BD" Foreground="White" Margin="10,0,0,0"
+                                                      Command="{Binding $parent[UserControl].DataContext.FetchModelsCommand}"
+                                                      ToolTip.Tip="Refresh Models from Provider" Height="45" Width="120" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                                                   <StackPanel Orientation="Horizontal" Spacing="8">
+                                                       <PathIcon Data="M21,10.12H14.22L16.96,7.3C14.55,5.07 10.96,4.71 8.14,6.21C6.73,6.96 5.61,8.12 4.9,9.5H2.6C3.43,7.31 5.09,5.5 7.22,4.4C10.79,2.5 15.17,3.13 18.06,5.81L21,2.88V10.12M12.5,8V12.25L16,14.33L15.28,15.54L11,13V8H12.5M2.88,13.88L5.78,16.7C8.19,18.93 11.78,19.29 14.6,17.79C16.01,17.04 17.13,15.88 17.84,14.5H20.14C19.31,16.69 17.65,18.5 15.51,19.6C11.95,21.5 7.57,20.87 4.68,18.19L1.74,21.12V13.88H8.94L2.88,13.88Z" Width="16" Height="16"/>
+                                                       <TextBlock Text="Refresh" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                                   </StackPanel>
+                                              </Button>
+                                          </Grid>
+                                          <!-- Instructions Area -->
+                                          <TextBlock Text="{Binding Description}" FontSize="12" Foreground="#AAA" Margin="0,15,0,0" TextWrapping="Wrap"/>
+                                      </StackPanel>
                                   </Grid>
-
-                                  <TextBlock Text="Endpoint" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,15,0,0" FontWeight="SemiBold"/>
-                                  <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding EndpointUrl}" Margin="0,15,0,0"/>
-
-                                  <TextBlock Text="Model" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,15,0,0" FontWeight="SemiBold"/>
-                                  <StackPanel Grid.Row="2" Grid.Column="1" Spacing="5" Margin="0,15,0,0">
-                                      <ComboBox ItemsSource="{Binding AvailableModels}" SelectedItem="{Binding SelectedModel}" HorizontalAlignment="Stretch" PlaceholderText="Select a model..."/>
-                                      <TextBlock Text="Click 'Test Connection' to fetch models." FontSize="10" Foreground="#666"/>
-                                  </StackPanel>
-                              </Grid>
-
-                              <StackPanel Orientation="Horizontal" Spacing="15" Margin="100,20,0,0">
-                                  <Button Content="Test Connection" Classes="accent" Command="{Binding $parent[UserControl].DataContext.TestConnectionCommand}"/>
                               </StackPanel>
-                          </StackPanel>
 
 
 

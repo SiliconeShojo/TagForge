@@ -12,6 +12,7 @@ namespace TagForge.Services
                 "Google Gemini" => new GeminiProvider(),
                 "Groq" => new GroqProvider(),
                 "OpenRouter" => new OpenRouterProvider(),
+                "LM Studio" => new LMStudioProvider(),
                 "Ollama" => new OllamaProvider(),
                 "Cerebras" => new CerebrasProvider(),
                 "Hugging Face" => new HuggingFaceProvider(),

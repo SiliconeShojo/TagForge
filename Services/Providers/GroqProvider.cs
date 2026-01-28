@@ -14,13 +14,13 @@ namespace TagForge.Services.Providers
         private const string DefaultBaseUrl = "https://api.groq.com/openai/v1/chat/completions";
         private const string ModelsUrl = "https://api.groq.com/openai/v1/models";
 
-        public async Task<bool> PingAsync(string apiKey, string baseUrl)
+        public async Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {
             using var client = new RestClient(ModelsUrl);
             var request = new RestRequest("", Method.Get);
             request.AddHeader("Authorization", $"Bearer {apiKey}");
 
-            var response = await client.ExecuteAsync(request);
+            var response = await client.ExecuteAsync(request, cancellationToken);
             
             if (!response.IsSuccessful)
             {
@@ -42,7 +42,7 @@ namespace TagForge.Services.Providers
             return true;
         }
 
-        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl)
+        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {
             var targetUrl = string.IsNullOrEmpty(baseUrl) ? DefaultBaseUrl : baseUrl;
             using var client = new RestClient(targetUrl);
@@ -65,7 +65,7 @@ namespace TagForge.Services.Providers
 
             request.AddJsonBody(payload);
 
-            var response = await client.ExecuteAsync(request);
+            var response = await client.ExecuteAsync(request, cancellationToken);
             if (!response.IsSuccessful)
             {
                 throw new Exception($"Groq API Error: {response.Content}");
@@ -76,13 +76,13 @@ namespace TagForge.Services.Providers
             return text ?? string.Empty;
         }
 
-        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl)
+        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {
             using var client = new RestClient(ModelsUrl);
             var request = new RestRequest("", Method.Get);
             request.AddHeader("Authorization", $"Bearer {apiKey}");
 
-            var response = await client.ExecuteAsync(request);
+            var response = await client.ExecuteAsync(request, cancellationToken);
             var models = new List<string>();
 
             if (response.IsSuccessful)
@@ -110,7 +110,7 @@ namespace TagForge.Services.Providers
             return models;
         }
 
-        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl)
+        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
         {
             var targetUrl = string.IsNullOrEmpty(baseUrl) ? DefaultBaseUrl : baseUrl;
             using var client = new HttpClient();
@@ -133,18 +133,19 @@ namespace TagForge.Services.Providers
             var request = new HttpRequestMessage(HttpMethod.Post, targetUrl);
             request.Content = new StringContent(JsonConvert.SerializeObject(payload), System.Text.Encoding.UTF8, "application/json");
 
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 var err = await response.Content.ReadAsStringAsync();
                 throw new Exception($"Groq API Error: {err}");
             }
 
-            using var stream = await response.Content.ReadAsStreamAsync();
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream);
 
             while (!reader.EndOfStream)
             {
+                if (cancellationToken.IsCancellationRequested) break;
                 var line = await reader.ReadLineAsync();
                 if (string.IsNullOrWhiteSpace(line)) continue;
                 if (line.Trim() == "data: [DONE]") break;
@@ -166,5 +167,6 @@ namespace TagForge.Services.Providers
                 }
             }
         }
+        public Task LoadModelAsync(string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

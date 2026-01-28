@@ -1,5 +1,7 @@
 # 🏷️ TagForge
 
+
+
 > **Advanced AI tagging and prompt generation studio.**  
 > Leverage the power of modern LLMs to craft perfect Stable Diffusion prompts in a sleek, high-performance desktop app.
 
@@ -35,6 +37,8 @@ TagForge currently supports the following AI providers:
 
 -   **✨ Google Gemini**: Fast and reliable multimodal models.
 -   **🚀 Groq**: Ultra-low latency inference for Llama/Mixtral models.
+-   **🔗 OpenRouter**: Access to top models from OpenAI, Anthropic, and more via a unified API.
+-   **🤖 LM Studio**: Connect to your local LM Studio server for private inference.
 -   **🦙 Ollama**: Local, private execution (runs on your machine).
 -   **🤗 Hugging Face**: Access thousands of open-source models via the Router API.
 
@@ -58,4 +62,9 @@ This generates `TagForge.exe` in the `./publish` folder with all dependencies em
 
 ---
 
+
 **Made with ❤️ using .NET & Avalonia.**
+
+<p align="center">
+  <img src="https://count.getloli.com/get/@TagForge?theme=gelbooru" alt="Visitor Count">
+</p>

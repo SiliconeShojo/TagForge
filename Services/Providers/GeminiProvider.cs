@@ -13,13 +13,13 @@ namespace TagForge.Services.Providers
     {
         public string Name => "Google Gemini";
 
-        public async Task<bool> PingAsync(string apiKey, string baseUrl)
+        public async Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {
             using var client = new RestClient("https://generativelanguage.googleapis.com/v1beta/models");
             var request = new RestRequest("", Method.Get);
             request.AddQueryParameter("key", apiKey);
 
-            var response = await client.ExecuteAsync(request);
+            var response = await client.ExecuteAsync(request, cancellationToken);
             
             if (!response.IsSuccessful)
             {
@@ -42,7 +42,7 @@ namespace TagForge.Services.Providers
             return true;
         }
 
-        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl)
+        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {
             // Gemini uses :generateContent
             // Model defaults to gemini-pro if not specified, but usually it should be passed.
@@ -70,7 +70,7 @@ namespace TagForge.Services.Providers
 
             request.AddJsonBody(payload);
 
-            var response = await client.ExecuteAsync(request);
+            var response = await client.ExecuteAsync(request, cancellationToken);
             if (!response.IsSuccessful)
             {
                 throw new Exception($"Gemini API Error: {response.Content}");
@@ -81,13 +81,13 @@ namespace TagForge.Services.Providers
             return text ?? string.Empty;
         }
 
-        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl)
+        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {
             using var client = new RestClient("https://generativelanguage.googleapis.com/v1beta/models");
             var request = new RestRequest("", Method.Get);
             request.AddQueryParameter("key", apiKey);
             
-            var response = await client.ExecuteAsync(request);
+            var response = await client.ExecuteAsync(request, cancellationToken);
             if (!response.IsSuccessful) return new List<string> { "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro" };
 
             var models = new List<string>();
@@ -107,7 +107,7 @@ namespace TagForge.Services.Providers
             
             return models.Count > 0 ? models : new List<string> { "gemini-1.5-flash", "gemini-1.5-pro" };
         }
-        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl)
+        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(model)) model = "gemini-1.5-flash"; 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={apiKey}";
@@ -129,18 +129,19 @@ namespace TagForge.Services.Providers
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Content = new StringContent(JsonConvert.SerializeObject(payload), System.Text.Encoding.UTF8, "application/json");
 
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                  var err = await response.Content.ReadAsStringAsync();
                  throw new Exception($"Gemini API Error: {err}");
             }
 
-            using var stream = await response.Content.ReadAsStreamAsync();
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream);
             
             while (!reader.EndOfStream)
             {
+                 if (cancellationToken.IsCancellationRequested) break;
                  var line = await reader.ReadLineAsync();
                  if (string.IsNullOrWhiteSpace(line)) continue;
                  
@@ -159,5 +160,6 @@ namespace TagForge.Services.Providers
                  }
             }
         }
+        public Task LoadModelAsync(string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

@@ -6,7 +6,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets\Logo.ico</ApplicationIcon>
-    <Version>1.1</Version>
+    <Version>1.2</Version>
     <Title>AI Tagging Studio</Title>
     <Description>AI Tagging Studio</Description>
     <Product>AI Tagging Studio</Product>

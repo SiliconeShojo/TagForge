@@ -202,7 +202,7 @@ namespace TagForge.ViewModels
                     aiMsg.IsThinking = false;
                 });
                 
-                SaveHistory();
+                await SaveHistory();
             }
         }
 
@@ -221,16 +221,16 @@ namespace TagForge.ViewModels
             _historyService.ClearHistory("assistant_chat.json");
         }
 
-        private void LoadHistory()
+        private async void LoadHistory()
         {
-            var history = _historyService.LoadHistory("assistant_chat.json");
+            var history = await _historyService.LoadHistoryAsync("assistant_chat.json");
             Messages.Clear();
             foreach (var msg in history) Messages.Add(msg);
         }
         
-        private void SaveHistory()
+        private async Task SaveHistory()
         {
-            _historyService.SaveHistory("assistant_chat.json", Messages);
+            await _historyService.SaveHistoryAsync("assistant_chat.json", Messages);
         }
 
         [RelayCommand]

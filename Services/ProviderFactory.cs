@@ -14,7 +14,6 @@ namespace TagForge.Services
                 "OpenRouter" => new OpenRouterProvider(),
                 "LM Studio" => new LMStudioProvider(),
                 "Ollama" => new OllamaProvider(),
-                "Cerebras" => new CerebrasProvider(),
                 "Hugging Face" => new HuggingFaceProvider(),
                 _ => null
             };

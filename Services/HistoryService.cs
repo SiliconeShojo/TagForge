@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 using TagForge.Models;
+using System.Threading.Tasks;
 
 namespace TagForge.Services
 {
@@ -21,7 +22,7 @@ namespace TagForge.Services
             }
         }
 
-        public List<ChatMessage> LoadHistory(string fileName)
+        public async Task<List<ChatMessage>> LoadHistoryAsync(string fileName)
         {
             var path = Path.Combine(_appDirectory, fileName);
             if (!File.Exists(path))
@@ -31,7 +32,7 @@ namespace TagForge.Services
 
             try
             {
-                var json = File.ReadAllText(path);
+                var json = await File.ReadAllTextAsync(path);
                 return JsonConvert.DeserializeObject<List<ChatMessage>>(json) ?? new List<ChatMessage>();
             }
             catch (Exception)
@@ -40,13 +41,13 @@ namespace TagForge.Services
             }
         }
 
-        public void SaveHistory(string fileName, IEnumerable<ChatMessage> messages)
+        public async Task SaveHistoryAsync(string fileName, IEnumerable<ChatMessage> messages)
         {
             try
             {
                 var path = Path.Combine(_appDirectory, fileName);
                 var json = JsonConvert.SerializeObject(messages, Formatting.Indented);
-                File.WriteAllText(path, json);
+                await File.WriteAllTextAsync(path, json);
             }
             catch (Exception ex)
             {

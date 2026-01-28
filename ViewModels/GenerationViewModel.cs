@@ -61,9 +61,9 @@ namespace TagForge.ViewModels
             }
         }
         
-        private void LoadHistory()
+        private async void LoadHistory()
         {
-            var history = _historyService.LoadHistory("generator.json");
+            var history = await _historyService.LoadHistoryAsync("generator.json");
             Messages.Clear();
             foreach (var msg in history)
             {
@@ -71,9 +71,9 @@ namespace TagForge.ViewModels
             }
         }
 
-        private void SaveHistory()
+        private async Task SaveHistory()
         {
-            _historyService.SaveHistory("generator.json", Messages);
+            await _historyService.SaveHistoryAsync("generator.json", Messages);
         }
 
         [RelayCommand]
@@ -104,6 +104,7 @@ namespace TagForge.ViewModels
 
             Prompt = string.Empty;
             IsGenerating = true;
+            _cts = new System.Threading.CancellationTokenSource();
             
             // Placeholder for AI Response (to update iteratively)
             // Placeholder for AI Response (to update iteratively)
@@ -115,6 +116,11 @@ namespace TagForge.ViewModels
 
             await Task.Run(async () => 
             {
+                // Consumer Task: Updates UI smoothly
+                var tokenQueue = new System.Collections.Concurrent.ConcurrentQueue<string>();
+                bool networkFinished = false;
+                Task displayTask = null;
+
                 try 
                 {
                     var provider = _providerFactory.CreateProvider(profile.Provider);
@@ -125,20 +131,22 @@ namespace TagForge.ViewModels
 
                     bool isThinking = false;
                     
-                    // Consumer Task: Updates UI smoothly
-                    var tokenQueue = new System.Collections.Concurrent.ConcurrentQueue<string>();
-                    bool networkFinished = false;
-
-                    var displayTask = Task.Run(async () => 
+                    displayTask = Task.Run(async () => 
                     {
+                        int tickCount = 0;
                         while (!networkFinished || !tokenQueue.IsEmpty)
                         {
                             if (tokenQueue.TryDequeue(out var str))
                             {
-                                // Batching
                                 var sb = new StringBuilder(str);
+                                
+                                // Adaptive Batching: Speed up if falling behind, but Cap to prevent freeze
+                                // Base 3 + 1 per 30 pending. Cap at 15 strings per tick.
+                                int batchLimit = 3 + (tokenQueue.Count / 30);
+                                batchLimit = System.Math.Min(batchLimit, 15);
+
                                 int count = 0;
-                                while (count < 20 && tokenQueue.TryDequeue(out var next))
+                                while (count < batchLimit && tokenQueue.TryDequeue(out var next))
                                 {
                                     sb.Append(next);
                                     count++;
@@ -148,20 +156,30 @@ namespace TagForge.ViewModels
                                 {
                                     if (aiMsg.IsThinking) aiMsg.IsThinking = false;
                                     aiMsg.Content += sb.ToString();
-                                    RequestScroll?.Invoke();
-                                });
-                                
-                                await Task.Delay(15); 
+                                    
+                                    // Throttled Scroll (Prevent Layout Thrashing)
+                                    if (tickCount % 5 == 0) RequestScroll?.Invoke();
+                                }, DispatcherPriority.Background);
+                            }
+                            else if (networkFinished)
+                            {
+                                break; 
                             }
                             else
                             {
-                                 await Task.Delay(10);
+                                // Queue empty, waiting for network
+                                await Task.Delay(10);
+                                continue;
                             }
+                            
+                            // 30fps Target
+                            tickCount++;
+                            await Task.Delay(35); 
                         }
                     });
                     
                     // Producer Loop: Fetches from Network
-                    await foreach (var token in provider.GenerateStreamingAsync(finalSystemMessage, currentPrompt, profile.SelectedModel, profile.ApiKey, profile.EndpointUrl))
+                    await foreach (var token in provider.GenerateStreamingAsync(finalSystemMessage, currentPrompt, profile.SelectedModel, profile.ApiKey, profile.EndpointUrl, _cts.Token))
                     {
                          string tempToken = token;
                          
@@ -197,19 +215,33 @@ namespace TagForge.ViewModels
                     sw.Stop();
                     _sessionService.LastLatency = sw.ElapsedMilliseconds;
                 }
+                catch (OperationCanceledException)
+                {
+                    networkFinished = true; // Ensure display task finishes
+                    Dispatcher.UIThread.Invoke(() => 
+                        Messages.Add(new ChatMessage("System", "Generation Stopped", "")));
+                }
                 catch (Exception ex)
                 {
+                    networkFinished = true;
                     Dispatcher.UIThread.Invoke(() => 
                         Messages.Add(new ChatMessage("Error", "Generation Failed", ex.Message)));
                 }
             });
             
             IsGenerating = false;
-            SaveHistory(); // Save on UI thread (ObservableCollection safe?)
-            // Messages modified on UI thread, so SaveHistory strictly on UI thread is safer.
-            // But here we are ending async method. Task.Run awaits, then we are back on UI context? 
-            // RelayCommand is async void/Task. It resumes on context.
-            // Yes.
+            _cts?.Dispose();
+            _cts = null;
+            
+            SaveHistory();
+        }
+
+        private System.Threading.CancellationTokenSource? _cts;
+
+        [RelayCommand]
+        private void StopGeneration()
+        {
+            _cts?.Cancel();
         }
 
         [RelayCommand]

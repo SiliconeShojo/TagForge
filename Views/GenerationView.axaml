@@ -108,8 +108,12 @@
                   </TextBox>
                   
                   <Button Grid.Column="1" Command="{Binding GenerateCommand}" 
-                          Width="40" Height="40" CornerRadius="20" Classes="accent" IsEnabled="{Binding !IsGenerating}">
+                          Width="40" Height="40" CornerRadius="20" Classes="accent" IsVisible="{Binding !IsGenerating}">
                       <PathIcon Data="M2,21L23,12L2,3V10L17,12L2,14V21Z" Width="18" Height="18" Foreground="Black" Margin="2,0,0,0"/>
+                  </Button>
+                  <Button Grid.Column="1" Command="{Binding StopGenerationCommand}" 
+                          Width="40" Height="40" CornerRadius="20" Background="#AA3333" IsVisible="{Binding IsGenerating}" ToolTip.Tip="Stop Generation">
+                      <PathIcon Data="M6,6H18V18H6V6Z" Width="16" Height="16" Foreground="White"/>
                   </Button>
               </Grid>
           </Border>

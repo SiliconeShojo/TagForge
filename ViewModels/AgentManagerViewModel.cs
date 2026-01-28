@@ -25,7 +25,7 @@ namespace TagForge.ViewModels
             "Groq",
             "OpenRouter",
             "Hugging Face",
-            // "Cerebras", // Hidden from UI
+
             "LM Studio",
             "Ollama"
         };
@@ -206,7 +206,7 @@ namespace TagForge.ViewModels
                 "OpenRouter" => "https://openrouter.ai/api/v1/chat/completions",
                 "LM Studio" => "http://localhost:1234/v1/chat/completions",
                 "Ollama" => "http://localhost:11434/api/chat",
-                "Cerebras" => "https://api.cerebras.ai/v1/chat/completions",
+
                 "Hugging Face" => "https://router.huggingface.co/v1",
                 "Custom" => "http://localhost:5000/v1/chat/completions", // Example default
                 _ => ""
@@ -224,7 +224,7 @@ namespace TagForge.ViewModels
                 "LM Studio" => "Connect to local LM Studio server.",
                 "Ollama" => "Run local models. No API Key required.",
                 "OpenRouter" => "Unified interface for top LLMs.",
-                "Cerebras" => "Fast AI inference.",
+
                 "Custom" => "Connect to any OpenAI-compatible endpoint.",
                 _ => "Configure your agent connection."
             };
@@ -410,7 +410,7 @@ namespace TagForge.ViewModels
                 "Hugging Face" => "https://huggingface.co/settings/tokens",
                 "Groq" => "https://console.groq.com/keys",
                 "OpenRouter" => "https://openrouter.ai/keys",
-                "Cerebras" => "https://cloud.cerebras.ai/platform",
+
                 "LM Studio" => "https://lmstudio.ai/docs/local-server",
                 "Ollama" => "https://ollama.com",
                 "Custom" => "https://platform.openai.com/docs/api-reference",
@@ -428,7 +428,7 @@ namespace TagForge.ViewModels
                 "OpenRouter" => "A unified interface to access top LLMs from OpenAI, Anthropic, and more.",
                 "LM Studio" => "Connect to your local LM Studio server. Ensure the server is running on localhost:1234.",
                 "Ollama" => "Run powerful local models like Llama 3 on your machine. Ensure Ollama is running.",
-                "Cerebras" => "Fast AI inference specialized for low latency.",
+
                 "Custom" => "Connect to any OpenAI-compatible API endpoint.",
                 _ => "Configure your agent details below."
             };
@@ -443,7 +443,7 @@ namespace TagForge.ViewModels
                  "OpenRouter" => StreamGeometry.Parse("M12,2A10,10 0 1,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 1,0 20,12A8,8 0 0,0 12,4M12,6L16,10H13V14H11V10H8L12,6Z"), // Compass/Arrow
                  "LM Studio" => StreamGeometry.Parse("M2,2H22V22H2V2M4,4V20H20V4H4M8,8H16V16H8V8Z"), // Generic Chip/Box fallback
                  "Ollama" => StreamGeometry.Parse("M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M7,9.5C7,8.7 7.7,8 8.5,8C9.3,8 10,8.7 10,9.5C10,10.3 9.3,11 8.5,11C7.7,11 7,10.3 7,9.5M12,17.23C10.25,17.23 8.71,16.5 7.81,15.42L9.23,14C9.68,14.72 10.75,15.23 12,15.23C13.25,15.23 14.32,14.72 14.77,14L16.19,15.42C15.29,16.5 13.75,17.23 12,17.23M15.5,11C14.7,11 14,10.3 14,9.5C14,8.7 14.7,8 15.5,8C16.3,8 17,8.7 17,9.5C17,10.3 16.3,11 15.5,11Z"), // Emoji Face
-                 "Cerebras" => StreamGeometry.Parse("M2,2H22V22H2V2M4,4V20H20V4H4M8,8H16V16H8V8Z"), // Chip
+
                  "Hugging Face" => StreamGeometry.Parse("M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M16,13H8V11H16V13Z"), // Simple Neutral Face
                  _ => StreamGeometry.Parse("M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4")
              };

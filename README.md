@@ -62,9 +62,6 @@ This generates `TagForge.exe` in the `./publish` folder with all dependencies em
 
 ---
 
-
-**Made with ❤️ using .NET & Avalonia.**
-
 <p align="center">
-  <img src="https://count.getloli.com/get/@TagForge?theme=gelbooru" alt="Visitor Count">
+  <img src="https://count.getloli.com/get/@TagForge?theme=rule34" alt="Visitor Count">
 </p>

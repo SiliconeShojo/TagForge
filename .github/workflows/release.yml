@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags like v1.0, v1.1.0, etc.
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Publish
+      run: dotnet publish TagForge.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o ./publish
+
+    - name: Get version from tag
+      id: get_version
+      run: |
+        $version = "${{ github.ref_name }}"
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ./publish/TagForge.exe
+        name: Release ${{ steps.get_version.outputs.VERSION }}
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

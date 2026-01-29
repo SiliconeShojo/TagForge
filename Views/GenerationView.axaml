@@ -5,6 +5,7 @@
              xmlns:vm="using:TagForge.ViewModels"
              xmlns:models="using:TagForge.Models"
              xmlns:conv="using:TagForge.Converters"
+             xmlns:ext="using:TagForge.Extensions"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:DataType="vm:GenerationViewModel"
              x:Name="GenRoot"
@@ -14,6 +15,7 @@
       <conv:RoleToAlignmentConverter x:Key="RoleAligned"/>
       <conv:RoleToBackgroundConverter x:Key="RoleBg"/>
       <conv:RoleToCornerRadiusConverter x:Key="RoleCorner"/>
+      <conv:StringVisibilityConverter x:Key="StringVis"/>
   </UserControl.Resources>
   
   <Grid RowDefinitions="Auto, *, Auto">
@@ -22,10 +24,10 @@
       <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto, Auto" Margin="20,15">
            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                <PathIcon Data="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H6L4,18V4H20" Width="18" Height="18" Foreground="{DynamicResource AccentBrush}"/>
-               <TextBlock Text="Tag Generator" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
+               <TextBlock Text="{ext:Localize Generation.Title}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
            </StackPanel>
            
-           <Button Grid.Column="2" Classes="ghost" Command="{Binding ClearHistoryCommand}" ToolTip.Tip="Clear History" Margin="0,0,15,0">
+           <Button Grid.Column="2" Classes="ghost" Command="{Binding ClearHistoryCommand}" ToolTip.Tip="{ext:Localize Generation.Clear}" Margin="0,0,15,0">
                <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" Width="16" Height="16" Foreground="#AA5555"/>
            </Button>
 
@@ -47,7 +49,7 @@
 
       <!-- Chat History -->
       <ScrollViewer Grid.Row="1" Margin="20,0,20,10" x:Name="ChatScroller">
-          <ItemsControl ItemsSource="{Binding Messages}">
+          <ItemsControl ItemsSource="{Binding Messages}" Margin="0,0,15,0">
               <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                       <StackPanel Spacing="15"/>
@@ -65,12 +67,19 @@
                                   <Panel>
                                       <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsThinking}" Margin="0,5">
                                           <ProgressBar IsIndeterminate="True" Width="40" Height="2" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
-                                          <TextBlock Text="Generating Tags..." Foreground="#888" FontSize="12" FontStyle="Italic"/>
+                                          <TextBlock Text="{ext:Localize Generation.Generating}" Foreground="#888" FontSize="12" FontStyle="Italic"/>
                                       </StackPanel>
 
                                       <SelectableTextBlock Text="{Binding Content}" TextWrapping="Wrap" LineHeight="22" Foreground="#E0E0E0"
                                                            IsVisible="{Binding !IsThinking}"/>
                                   </Panel>
+
+                                  <TextBlock Text="{Binding Details}" 
+                                                       TextWrapping="Wrap" 
+                                                       FontSize="11" 
+                                                       Foreground="#FF6B6B"
+                                                       Margin="0,5,0,0"
+                                                       IsVisible="{Binding Details, Converter={StaticResource StringVis}}"/>
                                   
                                   <Grid ColumnDefinitions="*, Auto, Auto" Margin="0,5,0,0">
                                       <TextBlock Text="{Binding Timestamp}" Foreground="#666" FontSize="10" VerticalAlignment="Center" Grid.Column="1" Margin="0,0,10,0"/>
@@ -79,7 +88,7 @@
                                               x:CompileBindings="False"
                                               Command="{Binding #GenRoot.DataContext.CopyMessageCommand}" 
                                               CommandParameter="{Binding Content}"
-                                              ToolTip.Tip="Copy">
+                                              ToolTip.Tip="{ext:Localize Common.Copy}">
                                           <PathIcon Data="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" 
                                                     Width="12" Height="12" Foreground="#666"/>
                                       </Button>
@@ -97,7 +106,7 @@
           <Border Background="#303030" CornerRadius="25" Padding="5" BoxShadow="0 4 15 0 #30000000" BorderBrush="#404040" BorderThickness="1">
               <Grid ColumnDefinitions="*, Auto">
                   <TextBox Text="{Binding Prompt}" 
-                           Watermark="Type a message..." 
+                           Watermark="{ext:Localize Generation.Placeholder}" 
                            Background="Transparent" 
                            BorderThickness="0" 
                            AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="100"
@@ -112,7 +121,7 @@
                       <PathIcon Data="M2,21L23,12L2,3V10L17,12L2,14V21Z" Width="18" Height="18" Foreground="Black" Margin="2,0,0,0"/>
                   </Button>
                   <Button Grid.Column="1" Command="{Binding StopGenerationCommand}" 
-                          Width="40" Height="40" CornerRadius="20" Background="#AA3333" IsVisible="{Binding IsGenerating}" ToolTip.Tip="Stop Generation">
+                          Width="40" Height="40" CornerRadius="20" Background="#AA3333" IsVisible="{Binding IsGenerating}" ToolTip.Tip="{ext:Localize Generation.Stop}">
                       <PathIcon Data="M6,6H18V18H6V6Z" Width="16" Height="16" Foreground="White"/>
                   </Button>
               </Grid>

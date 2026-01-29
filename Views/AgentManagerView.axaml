@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:TagForge.ViewModels"
+             xmlns:ext="using:TagForge.Extensions"
              mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
              x:DataType="vm:AgentManagerViewModel"
              x:Class="TagForge.Views.AgentManagerView">
@@ -15,8 +16,8 @@
 
       <!-- Header -->
       <StackPanel Grid.Row="0" Margin="0,0,0,20">
-          <TextBlock Text="Agent Configuration" FontSize="26" FontWeight="Bold"/>
-          <TextBlock Text="Configure your AI provider connections." Foreground="#888"/>
+          <TextBlock Text="{ext:Localize Agent.Title}" FontSize="26" FontWeight="Bold"/>
+          <TextBlock Text="{ext:Localize Agent.SelectProvider}" Foreground="#888"/>
       </StackPanel>
 
       <!-- Tabbed Interface -->
@@ -57,8 +58,8 @@
 
                                   <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto, Auto" Margin="0,15,0,0">
                                       <!-- Row 0: API Key -->
-                                      <TextBlock Grid.Row="0" Grid.Column="0" Text="API Key" VerticalAlignment="Center" Width="100" FontWeight="SemiBold"
-                                                 IsVisible="{Binding IsApiKeyNeeded}" Margin="0,0,0,25"/>
+                                      <TextBlock Grid.Row="0" Grid.Column="0" Text="{ext:Localize Agent.ApiKey}" VerticalAlignment="Center" MinWidth="100" FontWeight="SemiBold" Margin="0,0,15,25"
+                                                 IsVisible="{Binding IsApiKeyNeeded}"/>
                                       <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*, Auto" Margin="0,0,0,25" IsVisible="{Binding IsApiKeyNeeded}">
                                           <Grid Grid.Column="0" ColumnDefinitions="*, Auto">
                                               <TextBox Text="{Binding ApiKey}" PasswordChar="{Binding $parent[UserControl].DataContext.MaskChar}" 
@@ -71,29 +72,29 @@
                                           <Button Grid.Column="1" Margin="10,0,0,0" Background="#E65100" Foreground="White"
                                               Command="{Binding $parent[UserControl].DataContext.OpenUrlCommand}"
                                               CommandParameter="{Binding HelpUrl}"
-                                              ToolTip.Tip="Get API Key" Height="45" Width="120" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                                              ToolTip.Tip="{ext:Localize Agent.GetApiKey}" Height="45" MinWidth="120" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
                                                <StackPanel Orientation="Horizontal" Spacing="8">
                                                    <PathIcon Data="M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z" Width="16" Height="16"/>
-                                                   <TextBlock Text="Get Key" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                                   <TextBlock Text="{ext:Localize Agent.GetApiKey}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                                                </StackPanel>
                                           </Button>
                                       </Grid>
 
                                       <!-- Row 1: Endpoint -->
-                                      <TextBlock Grid.Row="1" Grid.Column="0" Text="Endpoint" VerticalAlignment="Center" Width="100" FontWeight="SemiBold" Margin="0,0,0,25"/>
+                                      <TextBlock Grid.Row="1" Grid.Column="0" Text="{ext:Localize Agent.Endpoint}" VerticalAlignment="Center" MinWidth="100" FontWeight="SemiBold" Margin="0,0,15,25"/>
                                       <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*, Auto" Margin="0,0,0,25">
                                           <TextBox Grid.Column="0" Text="{Binding EndpointUrl}" Margin="0,0,10,0" Height="45" VerticalContentAlignment="Center"/>
                                           <Button Grid.Column="1" Background="#2E7D32" Foreground="White" Command="{Binding $parent[UserControl].DataContext.TestConnectionCommand}" 
-                                                  ToolTip.Tip="Ping Connection" Height="45" Width="120" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                                                  ToolTip.Tip="{ext:Localize Agent.TestConnection}" Height="45" MinWidth="120" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
                                               <StackPanel Orientation="Horizontal" Spacing="8">
                                                    <PathIcon Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z" Width="16" Height="16"/>
-                                                   <TextBlock Text="Ping" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                                   <TextBlock Text="{ext:Localize Agent.TestConnection}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                                               </StackPanel>
                                           </Button>
                                       </Grid>
 
                                       <!-- Row 2: Model -->
-                                      <TextBlock Grid.Row="2" Grid.Column="0" Text="Model" VerticalAlignment="Center" Width="100" FontWeight="SemiBold"/>
+                                      <TextBlock Grid.Row="2" Grid.Column="0" Text="{ext:Localize Agent.Model}" VerticalAlignment="Center" MinWidth="100" FontWeight="SemiBold" Margin="0,0,15,0"/>
                                       <StackPanel Grid.Row="2" Grid.Column="1">
                                           <Grid ColumnDefinitions="*, Auto">
                                               <Grid Grid.Column="0" ColumnDefinitions="*, Auto">
@@ -107,10 +108,10 @@
                                               </Grid>
                                               <Button Grid.Column="1" Background="#0277BD" Foreground="White" Margin="10,0,0,0"
                                                       Command="{Binding $parent[UserControl].DataContext.FetchModelsCommand}"
-                                                      ToolTip.Tip="Refresh Models from Provider" Height="45" Width="120" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                                                      ToolTip.Tip="{ext:Localize Agent.FetchModels}" Height="45" MinWidth="120" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
                                                    <StackPanel Orientation="Horizontal" Spacing="8">
                                                        <PathIcon Data="M21,10.12H14.22L16.96,7.3C14.55,5.07 10.96,4.71 8.14,6.21C6.73,6.96 5.61,8.12 4.9,9.5H2.6C3.43,7.31 5.09,5.5 7.22,4.4C10.79,2.5 15.17,3.13 18.06,5.81L21,2.88V10.12M12.5,8V12.25L16,14.33L15.28,15.54L11,13V8H12.5M2.88,13.88L5.78,16.7C8.19,18.93 11.78,19.29 14.6,17.79C16.01,17.04 17.13,15.88 17.84,14.5H20.14C19.31,16.69 17.65,18.5 15.51,19.6C11.95,21.5 7.57,20.87 4.68,18.19L1.74,21.12V13.88H8.94L2.88,13.88Z" Width="16" Height="16"/>
-                                                       <TextBlock Text="Refresh" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                                       <TextBlock Text="{ext:Localize Agent.FetchModels}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                                                    </StackPanel>
                                               </Button>
                                           </Grid>

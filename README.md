@@ -16,6 +16,7 @@ TagForge provides a unified interface for your AI operations:
 -   **🎨 Tag Generator**: A specialized mode designed to convert simple ideas into massive, detailed, comma-separated tag lists optimized for Stable Diffusion and other image generators.
 -   **🔒 Secure Configuration**: Your API keys are encrypted at rest using Windows DPAPI—they never leave your machine except to contact the provider.
 -   **⚡ High Performance**: Built on .NET 9 with native background threading, ensuring the UI remains silky smooth even during heavy generation tasks.
+-   **🌍 Localization**: Fully localized interface available in **English**, **French**, and **Spanish**.
 -   **📂 History Management**: Automatically saves your generation history and chat sessions locally.
 
 ---
@@ -44,6 +45,15 @@ TagForge currently supports the following AI providers:
 
 ---
 
+## 🌍 Localization
+
+TagForge is available in **English**, **French**, and **Spanish**.
+
+**Want to add your language?**  
+It's easy! Check out the [**Translation Guide**](TRANSLATION_GUIDE.md) to learn how to contribute a new language in minutes. All contributors will be credited!
+
+---
+
 ## 🛠️ Build & Installation
 
 TagForge is built on **.NET 9.0** and **Avalonia UI** for cross-platform performance.
@@ -61,6 +71,17 @@ dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true --self-contained 
 This generates `TagForge.exe` in the `./publish` folder with all dependencies embedded.
 
 ---
+
+## 💖 Credits
+
+TagForge uses icons and assets from the following amazing sources:
+
+-   **LLM Model Icons**: [LobeHub](https://lobehub.com/)
+-   **UI Icons**: [The Noun Project](https://thenounproject.com/)
+
+---
+
+## 📈 Visitors
 
 <p align="center">
   <img src="https://count.getloli.com/get/@TagForge?theme=rule34" alt="Visitor Count">

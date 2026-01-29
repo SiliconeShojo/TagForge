@@ -184,8 +184,16 @@ namespace TagForge.ViewModels
                 }
                 catch (Exception ex)
                 {
+                    networkFinished = true;
+                    var errorDetails = $"Exception Type: {ex.GetType().Name}\nMessage: {ex.Message}\nStackTrace: {ex.StackTrace}";
+                    _sessionService.LogError("Chat Generation", errorDetails);
+                    
+                    var userMessage = ParseErrorMessage(ex);
                     Dispatcher.UIThread.Invoke(() => 
-                         Messages.Add(new ChatMessage("Error", "Generation Failed", ex.Message)));
+                    {
+                        aiMsg.IsThinking = false;
+                        aiMsg.Content = $"Generation Failed\n\n{userMessage}";
+                    });
                 }
                 });
             }
@@ -204,6 +212,67 @@ namespace TagForge.ViewModels
                 
                 await SaveHistory();
             }
+        }
+
+        private string ParseErrorMessage(Exception ex)
+        {
+            var message = ex.Message;
+            
+            // Try to extract JSON from provider error messages
+            // Most providers format as: "Provider API Error: {json}"
+            var jsonStart = message.IndexOf("{");
+            if (jsonStart >= 0)
+            {
+                try
+                {
+                    var jsonPart = message.Substring(jsonStart);
+                    dynamic errorObj = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonPart);
+                    
+                    // Try various common API error formats
+                    string apiError = null;
+                    
+                    // OpenAI/OpenRouter format: { "error": { "message": "..." } }
+                    if (errorObj?.error?.message != null)
+                        apiError = (string)errorObj.error.message;
+                    
+                    // Gemini format: { "error": { "message": "..." } }
+                    else if (errorObj?.error?.message != null)
+                        apiError = (string)errorObj.error.message;
+                    
+                    // HuggingFace format: { "error": "..." }
+                    else if (errorObj?.error != null && errorObj.error is string)
+                        apiError = (string)errorObj.error;
+                    
+                    // Groq/some others: { "message": "..." }
+                    else if (errorObj?.message != null)
+                        apiError = (string)errorObj.message;
+                    
+                    // Ollama format: { "error": "..." }
+                    else if (errorObj?.error != null)
+                        apiError = errorObj.error.ToString();
+                    
+                    if (!string.IsNullOrWhiteSpace(apiError))
+                        return apiError;
+                }
+                catch
+                {
+                    // JSON parsing failed, continue to fallback
+                }
+            }
+            
+            // Fallback: Extract first meaningful line
+            var lines = message.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                // Skip provider prefixes
+                if (trimmed.Contains("API Error:")) continue;
+                if (trimmed.StartsWith("HTTP ")) continue;
+                if (!string.IsNullOrWhiteSpace(trimmed))
+                    return trimmed;
+            }
+            
+            return "An error occurred. Check the Logs tab for details.";
         }
 
         private System.Threading.CancellationTokenSource? _cts;

@@ -6,15 +6,15 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets\Logo.ico</ApplicationIcon>
-    <Version>1.2</Version>
+    <Version>1.3</Version>
     <Title>AI Tagging Studio</Title>
     <Description>AI Tagging Studio</Description>
     <Product>AI Tagging Studio</Product>
     <AssemblyTitle>AI Tagging Studio</AssemblyTitle>
     <AssemblyProduct>AI Tagging Studio</AssemblyProduct>
-    <Authors>v1.1</Authors>
-    <Company>v1.1</Company>
-    <Copyright>Copyright © 2026</Copyright>
+    <Authors>SiliconeShojo</Authors>
+    <Company>v1.3</Company>
+	<Copyright>SiliconeShojo</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,6 +34,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Markdown.Avalonia" Version="11.0.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="RestSharp" Version="113.1.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />

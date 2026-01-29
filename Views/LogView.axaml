@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:TagForge.ViewModels"
+             xmlns:ext="using:TagForge.Extensions"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:DataType="vm:LogViewModel"
              x:Class="TagForge.Views.LogView">
@@ -11,10 +12,10 @@
         <!-- Header -->
         <Grid ColumnDefinitions="*, Auto" Margin="20">
             <StackPanel Spacing="5">
-                <TextBlock Text="System Logs" FontSize="24" FontWeight="Bold"/>
-                <TextBlock Text="Events, errors, and debug messages." Foreground="#888"/>
+                <TextBlock Text="{ext:Localize Logs.Title}" FontSize="24" FontWeight="Bold"/>
+                <TextBlock Text="{ext:Localize Logs.Description}" Foreground="#888"/>
             </StackPanel>
-            <Button Grid.Column="1" Content="Clear Logs" Command="{Binding ClearLogsCommand}"/>
+            <Button Grid.Column="1" Content="{ext:Localize Logs.Clear}" Command="{Binding ClearLogsCommand}"/>
         </Grid>
         
         <!-- Log List -->

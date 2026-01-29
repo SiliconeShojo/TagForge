@@ -4,6 +4,7 @@
         xmlns:views="using:TagForge.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:md="https://github.com/whistyun/Markdown.Avalonia"
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
         Width="1300" Height="850" CanResize="False" FontSize="16"
         x:Class="TagForge.Views.MainWindow"
@@ -177,9 +178,7 @@
                          <TextBlock Text="{Binding UpdateVersion}" FontSize="16" Foreground="White" Opacity="0.8"/>
                      </StackPanel>
                      
-                     <ScrollViewer Grid.Row="1" Margin="0,20">
-                         <TextBlock Text="{Binding UpdateChangelog}" TextWrapping="Wrap" Foreground="#DDD" FontSize="14" LineHeight="22"/>
-                     </ScrollViewer>
+                     <md:MarkdownScrollViewer Grid.Row="1" Margin="0,20" Markdown="{Binding UpdateChangelog}"/>
                      
                      <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="15" HorizontalAlignment="Right">
                          <Button Content="Remind Me Later" Command="{Binding DismissUpdateCommand}" Classes="ghost" />

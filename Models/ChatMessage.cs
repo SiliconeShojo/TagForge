@@ -17,14 +17,15 @@ namespace TagForge.Models
         private bool _isLoadingModel;
         
         public DateTime Timestamp { get; set; }
-        public string? Details { get; set; } 
+        [ObservableProperty]
+        private string? _details;
 
         public ChatMessage(string role, string content, string? details = null)
         {
             Role = role;
             _content = content;
             Timestamp = DateTime.Now;
-            Details = details;
+            _details = details;
         }
     }
 }

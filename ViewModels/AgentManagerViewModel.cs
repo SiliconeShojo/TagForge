@@ -261,7 +261,6 @@ namespace TagForge.ViewModels
                 {
                     HelpText = "Connection Successful!";
                     _mainViewModel?.ShowNotification("Connection Verified!", false);
-                    _sessionService.Log($"{SelectedProfile.Provider} ping successful", LogLevel.Info);
                 }
                 else
                 {

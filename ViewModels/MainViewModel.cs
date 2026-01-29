@@ -240,9 +240,6 @@ public partial class MainViewModel : ViewModelBase
 
     public void ShowNotification(string message, bool isError = false)
     {
-        // Also log deeply
-        _sessionService.Log(message, isError ? LogLevel.Error : LogLevel.Info);
-
         var notification = new Notification(message, isError);
         // Dispatch to UI thread just in case
         Dispatcher.UIThread.Invoke(() => 

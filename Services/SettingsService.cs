@@ -66,6 +66,10 @@ namespace TagForge.Services
                     }
                 };
             }
+
+            // Load saved language
+            var savedLanguage = CurrentSettings.SelectedLanguage ?? "en-US";
+            LocalizationService.Instance.ChangeLanguage(savedLanguage);
         }
 
         public void SaveSettings()
@@ -87,6 +91,7 @@ namespace TagForge.Services
         // Persistence for selections
         public string LastSelectedProviderName { get; set; }
         public string LastSelectedPersonaName { get; set; }
+        public string SelectedLanguage { get; set; } = "en-US";
         public bool AutoCheckForUpdates { get; set; } = true;
 
         // We will store the configured agents here

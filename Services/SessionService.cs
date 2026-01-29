@@ -42,8 +42,6 @@ namespace TagForge.Services
             // Restore Active Persona
             var lastPersona = settingsService.CurrentSettings.LastSelectedPersonaName;
             ActivePersona = Personas.FirstOrDefault(p => p.Name == lastPersona) ?? Personas.FirstOrDefault();
-            
-            Log("Session Started", LogLevel.Info);
         }
         
         // Design-time / fallback

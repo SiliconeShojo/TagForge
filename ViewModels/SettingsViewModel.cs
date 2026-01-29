@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
+using System.Linq;
 using TagForge.Services;
 using System.Collections.Generic;
 
@@ -10,11 +11,20 @@ namespace TagForge.ViewModels
     {
         private readonly SettingsService _settingsService;
         private readonly SessionService _sessionService;
+        private readonly LocalizationService _localizationService;
 
         public SettingsViewModel(SettingsService settingsService, SessionService sessionService)
         {
             _settingsService = settingsService;
             _sessionService = sessionService;
+            _localizationService = LocalizationService.Instance;
+            
+            // Load available languages
+            AvailableLanguages = new ObservableCollection<LanguageInfo>(_localizationService.GetAvailableLanguages());
+            
+            // Set current language
+            var currentLang = _localizationService.CurrentLanguageCode;
+            SelectedLanguage = AvailableLanguages.FirstOrDefault(l => l.Code == currentLang) ?? AvailableLanguages[0];
             
             if (Personas.Count > 0) 
             {
@@ -27,9 +37,27 @@ namespace TagForge.ViewModels
         {
             _settingsService = new SettingsService();
             _sessionService = new SessionService();
+            _localizationService = LocalizationService.Instance;
+            AvailableLanguages = new ObservableCollection<LanguageInfo>(_localizationService.GetAvailableLanguages());
+            SelectedLanguage = AvailableLanguages[0];
         }
         
         public string AppVersion => "v" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(2) ?? "1.0";
+
+        public ObservableCollection<LanguageInfo> AvailableLanguages { get; private set; }
+
+        [ObservableProperty]
+        private LanguageInfo _selectedLanguage;
+
+        partial void OnSelectedLanguageChanged(LanguageInfo value)
+        {
+            if (value != null)
+            {
+                _localizationService.ChangeLanguage(value.Code);
+                _settingsService.CurrentSettings.SelectedLanguage = value.Code;
+                _settingsService.SaveSettings();
+            }
+        }
 
         public ObservableCollection<Persona> Personas => _sessionService.Personas;
 

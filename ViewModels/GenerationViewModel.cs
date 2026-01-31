@@ -25,6 +25,9 @@ namespace TagForge.ViewModels
         private string _prompt;
 
         [ObservableProperty]
+        private ChatSession? _currentSession;
+
+        [ObservableProperty]
         private bool _isGenerating;
 
         public event Action? RequestScroll;
@@ -63,17 +66,63 @@ namespace TagForge.ViewModels
         
         private async void LoadHistory()
         {
-            var history = await _historyService.LoadHistoryAsync("generator.json");
-            Messages.Clear();
-            foreach (var msg in history)
+            // Clean up any empty sessions from previous app sessions
+            await _historyService.CleanupEmptySessionsAsync("generator");
+            
+            // Create a fresh session on startup
+            await CreateNewSession();
+        }
+
+        [RelayCommand]
+        public async Task CreateNewSession()
+        {
+            if (CurrentSession != null && Messages.Count > 0)
             {
-                Messages.Add(msg);
+                // Save current session before creating new one
+                await PerformSaveHistory();
             }
+
+            // Service will reuse empty sessions automatically
+            var newSession = await _historyService.CreateNewSessionAsync("generator");
+            
+            // Set as current session
+            CurrentSession = newSession;
+            Messages.Clear(); // Start empty
+        }
+
+        private async Task PerformSaveHistory()
+        {
+             if (CurrentSession != null)
+             {
+                  await _historyService.SaveSessionAsync(CurrentSession.Id, Messages.ToList(), "generator");
+             }
         }
 
         private async Task SaveHistory()
         {
-            await _historyService.SaveHistoryAsync("generator.json", Messages);
+            await PerformSaveHistory();
+        }
+
+        [RelayCommand]
+        public async Task LoadSession(ChatSession session)
+        {
+            if (session == null) return;
+
+            // Save previous if needed
+            if (CurrentSession != null && CurrentSession.Id != session.Id)
+            {
+                await SaveHistory();
+            }
+
+            CurrentSession = session;
+            
+            // Load messages
+            var messages = await _historyService.LoadSessionMessagesAsync(session.Id);
+            Messages.Clear();
+            foreach (var msg in messages)
+            {
+                Messages.Add(msg);
+            }
         }
 
         [RelayCommand]
@@ -312,12 +361,7 @@ namespace TagForge.ViewModels
             _cts?.Cancel();
         }
 
-        [RelayCommand]
-        private void ClearHistory()
-        {
-            Messages.Clear();
-            _historyService.ClearHistory("generator.json");
-        }
+
 
         [RelayCommand]
         private async Task CopyMessage(string content)

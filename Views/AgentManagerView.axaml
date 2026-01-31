@@ -101,7 +101,7 @@
                                                   <AutoCompleteBox Name="ModelSelector" Grid.Column="0" ItemsSource="{Binding AvailableModels}" SelectedItem="{Binding SelectedModel}" 
                                                                    HorizontalAlignment="Stretch" Watermark="Select or type model..." FilterMode="Contains" MinimumPrefixLength="0"
                                                                    TextChanged="ModelSelector_TextChanged" Height="45"/>
-                                                  <Button Grid.Column="1" Classes="ghost" Background="Transparent" Margin="-35,0,0,0" ToolTip.Tip="Show All Models"
+                                                  <Button Grid.Column="1" Classes="ghost" Background="Transparent" Margin="-35,0,0,0" ToolTip.Tip="{ext:Localize Agent.ShowAllModels}"
                                                           Click="ToggleModelDropdown" Width="35" Height="45">
                                                       <PathIcon Data="M7,10L12,15L17,10H7Z" Width="12" Height="12"/>
                                                   </Button>

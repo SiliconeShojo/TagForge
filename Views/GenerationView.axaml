@@ -16,39 +16,78 @@
       <conv:RoleToBackgroundConverter x:Key="RoleBg"/>
       <conv:RoleToCornerRadiusConverter x:Key="RoleCorner"/>
       <conv:StringVisibilityConverter x:Key="StringVis"/>
+      <conv:RoleToAvatarIconConverter x:Key="AvatarIcon"/>
+      <conv:RoleToAvatarBackgroundConverter x:Key="AvatarBg"/>
+      <conv:RoleToAvatarForegroundConverter x:Key="AvatarFg"/>
+      <conv:RoleToAvatarColumnConverter x:Key="AvatarCol"/>
+      <conv:RoleToMessageColumnConverter x:Key="MessageCol"/>
+      <conv:RoleToAvatarMarginConverter x:Key="AvatarMargin"/>
   </UserControl.Resources>
   
   <Grid RowDefinitions="Auto, *, Auto">
       
-      <!-- Top Header -->
-      <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto, Auto" Margin="20,15">
-           <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-               <PathIcon Data="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H6L4,18V4H20" Width="18" Height="18" Foreground="{DynamicResource AccentBrush}"/>
-               <TextBlock Text="{ext:Localize Generation.Title}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
-           </StackPanel>
-           
-           <Button Grid.Column="2" Classes="ghost" Command="{Binding ClearHistoryCommand}" ToolTip.Tip="{ext:Localize Generation.Clear}" Margin="0,0,15,0">
-               <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" Width="16" Height="16" Foreground="#AA5555"/>
-           </Button>
+      <!-- Solid Header -->
+      <Border Grid.Row="0" 
+              Background="#252525" 
+              Padding="20"
+              BorderBrush="#333333" 
+              BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="Auto, *, Auto, Auto">
+              
+              <!-- Title Section -->
+              <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                  <PathIcon Data="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H6L4,18V4H20" 
+                            Width="18" Height="18" 
+                            Foreground="{DynamicResource AccentBrush}"/>
+                  <TextBlock Text="{ext:Localize Generation.Title}" 
+                             FontWeight="Bold" 
+                             FontSize="16" 
+                             VerticalAlignment="Center"
+                             Foreground="#E0E0E0"/>
+              </StackPanel>
 
-           <!-- Persona Selector -->
-           <ComboBox Grid.Column="3" 
-                     ItemsSource="{Binding Personas}" 
-                     SelectedItem="{Binding SelectedPersona}" 
-                     MinWidth="160" CornerRadius="20" BorderThickness="0" Background="#252525">
-               <ComboBox.ItemTemplate>
-                   <DataTemplate>
-                       <StackPanel Orientation="Horizontal" Spacing="10">
-                           <PathIcon Data="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" Width="14" Height="14"/>
-                           <TextBlock Text="{Binding Name}" FontSize="12"/>
-                       </StackPanel>
-                   </DataTemplate>
-               </ComboBox.ItemTemplate>
-           </ComboBox>
-      </Grid>
+              <!-- Persona Selector -->
+              <ComboBox Grid.Column="2" 
+                        ItemsSource="{Binding Personas}" 
+                        SelectedItem="{Binding SelectedPersona}" 
+                        MinWidth="160" 
+                        Height="40"
+                        CornerRadius="6" 
+                        BorderThickness="0" 
+                        Background="#2A2A2A"
+                        BorderBrush="#404040"
+                        Margin="0,0,15,0">
+                  <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                          <StackPanel Orientation="Horizontal" Spacing="10">
+                              <PathIcon Data="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" Width="14" Height="14"/>
+                              <TextBlock Text="{Binding Name}" FontSize="12"/>
+                          </StackPanel>
+                      </DataTemplate>
+                  </ComboBox.ItemTemplate>
+              </ComboBox>
+
+              <!-- New Session Button -->
+              <Button Grid.Column="3" 
+                      Command="{Binding CreateNewSessionCommand}" 
+                      Height="40"
+                      Width="40"
+                      Background="#333333"
+                      Foreground="#4CAF50"
+                      FontSize="20"
+                      CornerRadius="6"
+                      BorderThickness="0"
+                      ToolTip.Tip="{ext:Localize History.NewSession}"
+                      HorizontalContentAlignment="Center"
+                      VerticalContentAlignment="Center">
+                  <TextBlock Text="+" Margin="0,-2,0,0"/>
+              </Button>
+          </Grid>
+      </Border>
+
 
       <!-- Chat History -->
-      <ScrollViewer Grid.Row="1" Margin="20,0,20,10" x:Name="ChatScroller">
+      <ScrollViewer Grid.Row="1" Margin="20,15,20,10" x:Name="ChatScroller">
           <ItemsControl ItemsSource="{Binding Messages}" Margin="0,0,15,0">
               <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
@@ -57,10 +96,23 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                   <DataTemplate DataType="models:ChatMessage">
-                      <Grid>
-                          <Border CornerRadius="{Binding Role, Converter={StaticResource RoleCorner}}" 
+                      <Grid ColumnDefinitions="Auto, *" HorizontalAlignment="{Binding Role, Converter={StaticResource RoleAligned}}">
+                          <!-- Avatar -->
+                          <Border Grid.Column="{Binding Role, Converter={StaticResource AvatarCol}}" 
+                                  Width="32" Height="32" 
+                                  CornerRadius="16" 
+                                  Background="{Binding Role, Converter={StaticResource AvatarBg}}"
+                                  Margin="{Binding Role, Converter={StaticResource AvatarMargin}}" 
+                                  VerticalAlignment="Top">
+                              <PathIcon Data="{Binding Role, Converter={StaticResource AvatarIcon}}"
+                                        Width="18" Height="18"
+                                        Foreground="{Binding Role, Converter={StaticResource AvatarFg}}"/>
+                          </Border>
+                          
+                          <!-- Message Content -->
+                          <Border Grid.Column="{Binding Role, Converter={StaticResource MessageCol}}"
+                                  CornerRadius="{Binding Role, Converter={StaticResource RoleCorner}}" 
                                   Background="{Binding Role, Converter={StaticResource RoleBg}}" 
-                                  HorizontalAlignment="{Binding Role, Converter={StaticResource RoleAligned}}"
                                   Padding="15" MaxWidth="600"
                                   BoxShadow="0 2 5 0 #20000000">
                               <StackPanel Spacing="5">

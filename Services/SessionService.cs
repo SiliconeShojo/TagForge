@@ -31,8 +31,12 @@ namespace TagForge.Services
         [ObservableProperty]
         private bool _isBusy;
 
+        private readonly SettingsService _settingsService;
+
         public SessionService(SettingsService settingsService)
         {
+            _settingsService = settingsService;
+            
             // Load Personas from Settings
             foreach (var p in settingsService.CurrentSettings.SavedPersonas)
             {
@@ -42,6 +46,16 @@ namespace TagForge.Services
             // Restore Active Persona
             var lastPersona = settingsService.CurrentSettings.LastSelectedPersonaName;
             ActivePersona = Personas.FirstOrDefault(p => p.Name == lastPersona) ?? Personas.FirstOrDefault();
+        }
+
+        partial void OnActivePersonaChanged(Persona? value)
+        {
+            // Save selected persona to settings
+            if (_settingsService != null && value != null)
+            {
+                _settingsService.CurrentSettings.LastSelectedPersonaName = value.Name;
+                _settingsService.SaveSettings();
+            }
         }
         
         // Design-time / fallback

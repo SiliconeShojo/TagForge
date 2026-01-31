@@ -3,11 +3,13 @@ using CommunityToolkit.Mvvm.Input;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using TagForge.Services;
 using TagForge.Models;
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Avalonia.Threading;
 using System.Text;
 
@@ -28,8 +30,15 @@ namespace TagForge.ViewModels
 
         public event Action? RequestScroll;
 
-        // Separate collection for this chat session? 
-        // Or reuse existing Message model but in a new collection? 
+        // Session management
+        [ObservableProperty]
+        private ChatSession? _currentSession;
+        
+        // Track which session is actively generating (for background generation)
+        private string? _generatingSessionId = null;
+        private ChatMessage? _generatingMessage = null;
+        private DateTime _lastBackgroundSave = DateTime.MinValue;
+
         public ObservableCollection<ChatMessage> Messages { get; } = new();
 
         public ChatViewModel(SessionService sessionService, MainViewModel mainVm)
@@ -38,7 +47,7 @@ namespace TagForge.ViewModels
             _mainViewModel = mainVm;
             _providerFactory = new ProviderFactory();
             _historyService = new HistoryService(); 
-            LoadHistory();
+            _ = InitializeAsync();
         }
 
         public ChatViewModel()
@@ -61,13 +70,25 @@ namespace TagForge.ViewModels
                return;
             }
 
+            // Auto-create session if none exists
+            if (CurrentSession == null)
+            {
+                await CreateNewSessionCommand.ExecuteAsync(null);
+            }
+
             // User Message (VISIBLE)
             var userMsg = new ChatMessage("User", Prompt);
             Messages.Add(userMsg);
             
             Prompt = string.Empty;
+            
+            // Save immediately after user message to prevent loss
+            await SaveHistory();
+            
             IsGenerating = true;
             
+            // Track which session is generating (for background generation support)
+            _generatingSessionId = CurrentSession?.Id;
             
             _cts = new System.Threading.CancellationTokenSource();
             
@@ -76,6 +97,9 @@ namespace TagForge.ViewModels
             aiMsg.IsThinking = true;
              
             Messages.Add(aiMsg);
+            
+            // Store reference for background updates
+            _generatingMessage = aiMsg;
 
             var sw = Stopwatch.StartNew();
             
@@ -113,12 +137,60 @@ namespace TagForge.ViewModels
                                     count++;
                                 }
 
-                                await Dispatcher.UIThread.InvokeAsync(() => 
+                                var batchContent = sb.ToString();
+                                
+                                // Check if we're generating in background (different session is active)
+                                bool isBackground = _generatingSessionId != null && 
+                                                   CurrentSession?.Id != _generatingSessionId;
+                                
+                                if (isBackground)
                                 {
-                                    if (aiMsg.IsThinking) aiMsg.IsThinking = false;
-                                    aiMsg.Content += sb.ToString();
-                                    RequestScroll?.Invoke();
-                                });
+                                    // Background mode: update message content directly without UI
+                                    if (_generatingMessage != null)
+                                    {
+                                        _generatingMessage.Content += batchContent;
+                                        
+                                        // Debounced save to disk (every 2 seconds)
+                                        if (DateTime.Now - _lastBackgroundSave > TimeSpan.FromSeconds(2))
+                                        {
+                                            var sessionId = _generatingSessionId;
+                                            var currentContent = _generatingMessage.Content;
+                                            
+                                            // Save to generating session in background
+                                            _ = Task.Run(async () =>
+                                            {
+                                                try
+                                                {
+                                                    // Load current session messages
+                                                    var sessionMessages = await _historyService.LoadSessionMessagesAsync(sessionId);
+                                                    
+                                                    // Update the AI message with latest content
+                                                    var aiMessage = sessionMessages.LastOrDefault(m => m.Role == "Assistant");
+                                                    if (aiMessage != null)
+                                                    {
+                                                        aiMessage.Content = currentContent;
+                                                    }
+                                                    
+                                                    // Save back to disk
+                                                    await _historyService.SaveSessionAsync(sessionId, sessionMessages, "chat");
+                                                }
+                                                catch { /* Background save failed, will try again */ }
+                                            });
+                                            _lastBackgroundSave = DateTime.Now;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    // Foreground mode: normal UI updates
+                                    await Dispatcher.UIThread.InvokeAsync(() => 
+                                    {
+                                        if (aiMsg.IsThinking) aiMsg.IsThinking = false;
+                                        aiMsg.Content += batchContent;
+                                        RequestScroll?.Invoke();
+                                    });
+                                }
+                                
                                 await Task.Delay(15); // Smooth type delay
                             }
                             else
@@ -211,6 +283,10 @@ namespace TagForge.ViewModels
                 });
                 
                 await SaveHistory();
+                
+                // Clear generation tracking (background generation complete)
+                _generatingSessionId = null;
+                _generatingMessage = null;
             }
         }
 
@@ -284,22 +360,86 @@ namespace TagForge.ViewModels
         }
 
         [RelayCommand]
-        private void ClearChat()
+        private async Task CreateNewSession()
         {
-            Messages.Clear();
-            _historyService.ClearHistory("assistant_chat.json");
+            // Service will reuse empty sessions automatically
+            var newSession = await _historyService.CreateNewSessionAsync("chat");
+            await LoadSessionCommand.ExecuteAsync(newSession);
         }
+        
+        [RelayCommand]
+        private async Task LoadSession(ChatSession session)
+        {
+            if (session == null) return;
+            
+            // REMOVED: Don't cancel generation - let it continue in background
+            // Generation will keep running and saving to the generating session
+            
+            // CRITICAL: Save current session before switching to prevent data loss
+            if (CurrentSession != null && CurrentSession.Id != session.Id)
+            {
+                await SaveHistory();
+            }
+            
+            if (CurrentSession != null)
+                CurrentSession.IsActive = false;
+                
+            session.IsActive = true;
+            CurrentSession = session;
+            
+            // Load messages
+            var messages = await _historyService.LoadSessionMessagesAsync(session.Id);
+            Messages.Clear();
+            foreach (var msg in messages)
+                Messages.Add(msg);
+                
+            // If this session is generating in background, we just loaded stale data
+            // Reload to show latest progress
+            if (_generatingSessionId == session.Id && IsGenerating)
+            {
+                // Give background a moment to save latest
+                await Task.Delay(100);
+                var updatedMessages = await _historyService.LoadSessionMessagesAsync(session.Id);
+                Messages.Clear();
+                foreach (var msg in updatedMessages)
+                    Messages.Add(msg);
+            }
+        }
+        
 
-        private async void LoadHistory()
+
+        private async Task InitializeAsync()
         {
-            var history = await _historyService.LoadHistoryAsync("assistant_chat.json");
-            Messages.Clear();
-            foreach (var msg in history) Messages.Add(msg);
+            // Check for migration first
+            if (await _historyService.NeedsMigrationAsync("assistant_chat.json"))
+            {
+                var migratedSession = await _historyService.MigrateOldHistoryAsync("assistant_chat.json", "chat");
+                if (migratedSession != null)
+                {
+                    _mainViewModel?.ShowNotification("Chat history organized into sessions!", false);
+                }
+            }
+
+            // Clean up any empty sessions from previous app sessions
+            await _historyService.CleanupEmptySessionsAsync("chat");
+
+            // Create a fresh session on startup
+            await CreateNewSessionCommand.ExecuteAsync(null);
         }
+        
+
         
         private async Task SaveHistory()
         {
-            await _historyService.SaveHistoryAsync("assistant_chat.json", Messages);
+            if (CurrentSession != null)
+            {
+                await _historyService.SaveSessionAsync(CurrentSession.Id, Messages.ToList(), "chat");
+                
+                // Update session metadata in list
+                CurrentSession.LastModified = DateTime.Now;
+                CurrentSession.MessageCount = Messages.Count;
+                CurrentSession.Title = _historyService.GenerateTitleFromMessages(Messages.ToList());
+            }
         }
 
         [RelayCommand]

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.ObjectModel;
 using Avalonia.Controls;
+using TagForge.Models;
 using TagForge.Services;
 using Avalonia.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,8 @@ public partial class MainViewModel : ViewModelBase
     private bool _isSystemVisible;
     [ObservableProperty]
     private bool _isLogVisible;
+    [ObservableProperty]
+    private bool _isHistoryVisible;
 
     [ObservableProperty]
     private bool _isPaneOpen = true;
@@ -203,23 +206,28 @@ public partial class MainViewModel : ViewModelBase
     public GenerationViewModel GenInstance { get; private set; }
     public ChatViewModel ChatInstance { get; private set; }
     public AgentManagerViewModel NetworkInstance { get; private set; }
+    public HistoryViewModel HistoryInstance { get; private set; }
 
     public SettingsViewModel SystemInstance { get; private set; }
     public LogViewModel LogInstance { get; private set; }
+    
+
 
     private void InitializeItems()
     {
         GenInstance = new GenerationViewModel(_sessionService, this);
         ChatInstance = new ChatViewModel(_sessionService, this);
         NetworkInstance = new AgentManagerViewModel(_sessionService, _settingsService, this);
+        HistoryInstance = new HistoryViewModel(this);
         SystemInstance = new SettingsViewModel(_settingsService, _sessionService);
         LogInstance = new LogViewModel(_sessionService);
 
-        Items.Add(new ListItemTemplate(typeof(GenerationViewModel), "Tag Generator", "M5.5,7A1.5,1.5 0 0,1 4,5.5A1.5,1.5 0 0,1 5.5,4A1.5,1.5 0 0,1 7,5.5A1.5,1.5 0 0,1 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.9,2 2,2.9 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.45 21.77,11.94 21.41,11.58Z", GenInstance));
-        Items.Add(new ListItemTemplate(typeof(ChatViewModel), "Chat", "M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H6L4,18V4H20Z", ChatInstance));
-        Items.Add(new ListItemTemplate(typeof(AgentManagerViewModel), "Agent Configuration", "M12,18A6,6 0 0,1 6,12C6,8.69 8.69,6 12,6C15.31,6 18,8.69 18,12A6,6 0 0,1 12,18M12,4C7.58,4 4,7.58 4,12C4,16.42 7.58,20 12,20C16.42,20 20,16.42 20,12C20,7.58 16.42,4 12,4Z", NetworkInstance));
-        Items.Add(new ListItemTemplate(typeof(SettingsViewModel), "System", "M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.04 4.95,18.95L7.44,17.95C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.95L19.05,18.95C19.27,19.04 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z", SystemInstance));
-        Items.Add(new ListItemTemplate(typeof(LogViewModel), "Logs", "M14,12H15.5V14.82L17.94,16.23L17.19,17.53L14,15.69V12M4,2H18A2,2 0 0,1 20,4V16A2,2 0 0,1 18,18H6L2,22V4A2,2 0 0,1 4,2M6,9H18V7H6V9M6,13H12V11H6V13M6,17H10V15H6V17Z", LogInstance));
+        Items.Add(new ListItemTemplate(typeof(GenerationViewModel), "Nav.TagGenerator", "M5.5,7A1.5,1.5 0 0,1 4,5.5A1.5,1.5 0 0,1 5.5,4A1.5,1.5 0 0,1 7,5.5A1.5,1.5 0 0,1 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.9,2 2,2.9 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.45 21.77,11.94 21.41,11.58Z", GenInstance));
+        Items.Add(new ListItemTemplate(typeof(ChatViewModel), "Nav.Chat", "M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H6L4,18V4H20Z", ChatInstance));
+        Items.Add(new ListItemTemplate(typeof(HistoryViewModel), "Nav.History", "M13,3A9,9 0 0,0 4,12H1L4.89,15.89L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.2 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3M12,8V13L16.28,15.54L17,14.33L13.5,12.25V8H12Z", HistoryInstance));
+        Items.Add(new ListItemTemplate(typeof(AgentManagerViewModel), "Nav.AgentConfig", "M12,18A6,6 0 0,1 6,12C6,8.69 8.69,6 12,6C15.31,6 18,8.69 18,12A6,6 0 0,1 12,18M12,4C7.58,4 4,7.58 4,12C4,16.42 7.58,20 12,20C16.42,20 20,16.42 20,12C20,7.58 16.42,4 12,4Z", NetworkInstance));
+        Items.Add(new ListItemTemplate(typeof(SettingsViewModel), "Nav.System", "M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.04 4.95,18.95L7.44,17.95C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.95L19.05,18.95C19.27,19.04 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z", SystemInstance));
+        Items.Add(new ListItemTemplate(typeof(LogViewModel), "Nav.Logs", "M14,12H15.5V14.82L17.94,16.23L17.19,17.53L14,15.69V12M4,2H18A2,2 0 0,1 20,4V16A2,2 0 0,1 18,18H6L2,22V4A2,2 0 0,1 4,2M6,9H18V7H6V9M6,13H12V11H6V13M6,17H10V15H6V17Z", LogInstance));
     }
 
     private void UpdateCurrentView(ListItemTemplate? value)
@@ -232,9 +240,16 @@ public partial class MainViewModel : ViewModelBase
             CurrentPage = vm;
             IsGeneratorVisible = vm is GenerationViewModel;
             IsChatVisible = vm is ChatViewModel;
+            IsHistoryVisible = vm is HistoryViewModel;
             IsNetworkVisible = vm is AgentManagerViewModel;
             IsSystemVisible = vm is SettingsViewModel;
             IsLogVisible = vm is LogViewModel;
+
+            if (vm is HistoryViewModel historyVM)
+            {
+                // Refresh sessions when entering history tab
+                _ = historyVM.LoadAllSessions();
+            }
         }
     }
 
@@ -293,8 +308,41 @@ public partial class MainViewModel : ViewModelBase
              }
              
              // Use Warning for background pings to differentiate from explicit user tests
-             _sessionService.Log($"Background Ping Failed: {errorDetails}", LogLevel.Warning);
+             _sessionService.Log($"Background Ping Failed: {errorDetails}", TagForge.Services.LogLevel.Warning);
          }
+    }
+
+    // Session navigation methods for History tab
+    public async Task LoadChatSessionAsync(ChatSession session)
+    {
+        if (ChatInstance != null)
+        {
+            await ChatInstance.LoadSessionCommand.ExecuteAsync(session);
+            SwitchToChat();
+        }
+    }
+    
+    public async Task LoadTagSessionAsync(ChatSession session)
+    {
+        if (GenInstance != null)
+        {
+            await GenInstance.LoadSessionCommand.ExecuteAsync(session);
+            SwitchToGenerator();
+        }
+    }
+    
+    [RelayCommand]
+    public void SwitchToChat()
+    {
+        var item = System.Linq.Enumerable.FirstOrDefault(Items, i => i.ModelType == typeof(ChatViewModel));
+        if (item != null) SelectedListItem = item;
+    }
+
+    [RelayCommand]
+    public void SwitchToGenerator()
+    {
+        var item = System.Linq.Enumerable.FirstOrDefault(Items, i => i.ModelType == typeof(GenerationViewModel));
+        if (item != null) SelectedListItem = item;
     }
 }
 
@@ -311,25 +359,74 @@ public class Notification
     }
 }
 
-public class ListItemTemplate
+public partial class ListItemTemplate : ObservableObject
 {
-    public string Label { get; }
+    [ObservableProperty]
+    private string _label;
+    
+    public string LabelKey { get; }
     public Type ModelType { get; }
     public string IconData { get; }
     public Avalonia.Media.IImage? IconBitmap { get; }
     public bool HasCustomIcon => IconBitmap != null;
-    public object? Instance { get; } // Restored
+    public object? Instance { get; }
 
-    public ListItemTemplate(Type type, string label, string iconData, object? instance = null)
+    public ListItemTemplate(Type type, string labelKey, string iconData, object? instance = null)
     {
         ModelType = type;
-        Label = label;
+        LabelKey = labelKey;
         IconData = iconData;
         Instance = instance;
+        
+        // Initial Translation
+        _label = LocalizationService.Instance[LabelKey];
+        
+        // Listen for changes
+        LocalizationService.Instance.LanguageChanged += () => 
+        {
+            Label = LocalizationService.Instance[LabelKey];
+        };
 
         try 
         {
-            string name = label.Replace(" ", "") + ".png";
+            // Use key as filename prefix if needed, or stick to old behavior?
+            // "TagGenerator" vs "Nav.TagGenerator"
+            // The icon logic used "label.Replace(" ", "")".
+            // We should pass the key, but the icon loader relied on the English text?
+            // "Tag Generator" -> "TagGenerator.png".
+            // "Nav.TagGenerator" -> "Nav.TagGenerator.png"? No.
+            // Icons are: Chat.png, TagGenerator.png, History.png, etc.
+            // I should pass the ICON NAME explicitly or derive it.
+            // Let's deduce icon name from the key for now.
+            
+            // Expected Icon Names:
+            // Nav.TagGenerator -> TagGenerator.png
+            // Nav.Chat -> Chat.png
+            // Nav.History -> History.png
+            // Nav.AgentConfig -> AgentConfiguration.png ?? 
+            // Nav.System -> System.png
+            // Nav.Logs -> Logs.png
+            
+            // Previous labels: "Tag Generator", "Chat", "History", "Agent Configuration", "System", "Logs".
+            // Old Logic: label.Replace(" ","") + ".png".
+            // "TagGenerator.png", "Chat.png", "History.png", "AgentConfiguration.png", "System.png", "Logs.png".
+            
+            // New Key-based Logic:
+            // "Nav.TagGenerator" -> "TagGenerator"
+            // "Nav.Chat" -> "Chat"
+            // "Nav.History" -> "History"
+            // "Nav.AgentConfig" -> "AgentConfig" != "AgentConfiguration"
+            // "Nav.System" -> "System"
+            // "Nav.Logs" -> "Logs"
+            
+            // "AgentConfig" assumes "AgentConfiguration.png"?
+            // I'll manually map or just keep the old logic but I need the OLD English name for the icon?
+            // I'll add an 'IconName' parameter or just hardcode the keys to match icons.
+            
+            string iconName = LabelKey.Replace("Nav.", "");
+            if (iconName == "AgentConfig") iconName = "AgentConfiguration"; // manual fix
+            
+            string name = iconName + ".png";
             var uri = new Uri($"avares://TagForge/Assets/Icons/{name}");
             
             if (Avalonia.Platform.AssetLoader.Exists(uri))

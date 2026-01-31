@@ -104,6 +104,9 @@
                         <Panel IsVisible="{Binding IsChatVisible, FallbackValue=False}">
                             <views:ChatView DataContext="{Binding ChatInstance}" />
                         </Panel>
+                        <Panel IsVisible="{Binding IsHistoryVisible, FallbackValue=False}">
+                            <views:HistoryView DataContext="{Binding HistoryInstance}" />
+                        </Panel>
                         <Panel IsVisible="{Binding IsNetworkVisible, FallbackValue=False}">
                             <views:AgentManagerView DataContext="{Binding NetworkInstance}" />
                         </Panel>

@@ -1,0 +1,246 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TagForge.ViewModels"
+             xmlns:conv="using:TagForge.Converters"
+             xmlns:text="clr-namespace:TagForge.Extensions;assembly=TagForge"
+             x:Class="TagForge.Views.HistoryView"
+             x:DataType="vm:HistoryViewModel">
+
+    <UserControl.Resources>
+        <conv:BooleanToBrushConverter x:Key="BoolToBrush"/>
+        <conv:SessionTypeColorConverter x:Key="TypeColor"/>
+        <conv:SessionTypeIconConverter x:Key="TypeIcon"/>
+    </UserControl.Resources>
+    
+    <Grid RowDefinitions="Auto,*" Background="#1A1A1A">
+        
+        <!-- Header: Search, Filter, and Actions -->
+        <Border Grid.Row="0" 
+                Background="#252525" 
+                Padding="20"
+                BorderBrush="#333333" 
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                
+                <!-- Search Box -->
+                <TextBox Grid.Column="0" 
+                         Watermark="{text:Localize History.SearchPlaceholder}"
+                         Text="{Binding SearchQuery}"
+                         FontSize="14"
+                         Height="40"
+                         VerticalContentAlignment="Center"
+                         Background="#2A2A2A"
+                         BorderBrush="#404040"
+                         Foreground="#E0E0E0"
+                         CornerRadius="6"
+                         Margin="0,0,15,0"/>
+                
+                <!-- Filter Dropdown -->
+                <ComboBox Grid.Column="1" 
+                          Height="40"
+                          MinWidth="140"
+                          SelectedIndex="{Binding FilterIndex}"
+                          FontSize="14"
+                          Background="#2A2A2A"
+                          BorderBrush="#404040"
+                          CornerRadius="6"
+                          Margin="0,0,15,0"
+                          ItemsSource="{Binding FilterOptions}">
+                </ComboBox>
+                
+                <!-- Header Actions -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                    <!-- Clear All Button -->
+                    <Button Command="{Binding ClearAllHistoryCommand}"
+                            Height="40"
+                            Width="40"
+                            Background="#333333"
+                            Foreground="#FF6B6B"
+                            FontSize="16"
+                            CornerRadius="6"
+                            BorderThickness="0"
+                            ToolTip.Tip="{text:Localize History.ClearAll}"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center">
+                        <TextBlock Text="🗑️" Margin="0,1,0,0"/>
+                    </Button>
+
+                    <!-- Refresh Button -->
+                    <Button Command="{Binding LoadAllSessionsCommand}"
+                            Height="40"
+                            Width="40"
+                            Background="#333333"
+                            Foreground="White"
+                            FontSize="18"
+                            CornerRadius="6"
+                            BorderThickness="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center">
+                        <TextBlock Text="🔄" Margin="0,2,0,0"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+        
+        <!-- Session List -->
+        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsSessionsEmpty}">
+            <ItemsControl ItemsSource="{Binding AllSessions}" Margin="20,15,20,15">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="15" 
+                                Margin="0,0,0,10"
+                                Background="#252525"
+                                CornerRadius="8"
+                                BorderBrush="{Binding IsActive, Converter={StaticResource BoolToBrush}, ConverterParameter='#6B8AFF|#3A3A3A'}"
+                                BorderThickness="2">
+                            <Border.Styles>
+                                <Style Selector="Border:pointerover">
+                                    <Setter Property="Background" Value="#2A2A2A"/>
+                                </Style>
+                            </Border.Styles>
+                            
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                
+                                <!-- Type Icon -->
+                                <Border Grid.Column="0" 
+                                        Background="{Binding Type, Converter={StaticResource TypeColor}}"
+                                        CornerRadius="8"
+                                        Width="48"
+                                        Height="48"
+                                        Margin="0,0,15,0">
+                                    <TextBlock Text="{Binding Type, Converter={StaticResource TypeIcon}}"
+                                              FontSize="24"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                </Border>
+                                
+                                <!-- Session Info -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" 
+                                              FontSize="16" 
+                                              FontWeight="SemiBold"
+                                              Foreground="#E0E0E0"
+                                              TextTrimming="CharacterEllipsis"/>
+                                              
+                                    <TextBlock Text="{Binding PreviewText}" 
+                                              Opacity="0.6" 
+                                              FontSize="13"
+                                              Margin="0,4,0,0"
+                                              Foreground="#E0E0E0"
+                                              TextTrimming="CharacterEllipsis"
+                                              MaxHeight="40"
+                                              TextWrapping="Wrap"/>
+                                              
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <TextBlock FontSize="12" 
+                                                  Opacity="0.5"
+                                                  Foreground="#E0E0E0">
+                                            <Run Text="{Binding MessageCount}"/>
+                                            <Run Text="messages •"/>
+                                            <Run Text="{Binding LastModified, StringFormat='MMM dd, HH:mm'}"/>
+                                        </TextBlock>
+                                        
+                                        <!-- Active Badge -->
+                                        <Border Background="#6B8AFF" 
+                                               CornerRadius="4" 
+                                               Padding="6,2"
+                                               Margin="10,0,0,0"
+                                               IsVisible="{Binding IsActive}">
+                                            <TextBlock Text="ACTIVE" 
+                                                      FontSize="10" 
+                                                      FontWeight="Bold"
+                                                      Foreground="White"/>
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                                
+                                <!-- Actions -->
+                                <StackPanel Grid.Column="2" 
+                                           Orientation="Horizontal" 
+                                           Spacing="8"
+                                           VerticalAlignment="Center">
+                                    <Button Command="{Binding $parent[ItemsControl].((vm:HistoryViewModel)DataContext).SelectSessionCommand}"
+                                            CommandParameter="{Binding}"
+                                            Height="32"
+                                            Width="32"
+                                            Background="#6B8AFF"
+                                            Foreground="White"
+                                            FontSize="12"
+                                            CornerRadius="5"
+                                            BorderThickness="0"
+                                            HorizontalContentAlignment="Center"
+                                            VerticalContentAlignment="Center"
+                                            ToolTip.Tip="{text:Localize Common.Open}">
+                                        <PathIcon Data="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z" Width="16" Height="16"/>
+                                    </Button>
+                                            
+                                    <Button Content="✏️"
+                                            Command="{Binding $parent[ItemsControl].((vm:HistoryViewModel)DataContext).RenameSessionCommand}"
+                                            CommandParameter="{Binding}"
+                                            Height="32"
+                                            Width="32"
+                                            Background="#333333"
+                                            Foreground="White"
+                                            FontSize="14"
+                                            CornerRadius="5"
+                                            BorderThickness="0"
+                                            ToolTip.Tip="{text:Localize History.Rename}"
+                                            HorizontalContentAlignment="Center"
+                                            VerticalContentAlignment="Center"/>
+                                            
+                                    <Button Content="🗑️"
+                                            Command="{Binding $parent[ItemsControl].((vm:HistoryViewModel)DataContext).DeleteSessionCommand}"
+                                            CommandParameter="{Binding}"
+                                            Height="32"
+                                            Width="32"
+                                            Background="#333333"
+                                            Foreground="#FF6B6B"
+                                            FontSize="14"
+                                            CornerRadius="5"
+                                            BorderThickness="0"
+                                            ToolTip.Tip="{text:Localize History.Delete}"
+                                            HorizontalContentAlignment="Center"
+                                            VerticalContentAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Empty State -->
+        <StackPanel Grid.Row="1" 
+                   IsVisible="{Binding IsSessionsEmpty}"
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center"
+                   Spacing="15">
+            <TextBlock Text="📂" FontSize="48" HorizontalAlignment="Center" Opacity="0.3"/>
+            <TextBlock Text="No History Found" 
+                       FontSize="20" 
+                       FontWeight="SemiBold" 
+                       Foreground="#E0E0E0" 
+                       HorizontalAlignment="Center"
+                       Opacity="0.7"/>
+            <TextBlock Text="Start a new chat or generate tags to see them here." 
+                       FontSize="13" 
+                       Foreground="#E0E0E0" 
+                       HorizontalAlignment="Center"
+                       Opacity="0.5"/>
+            <StackPanel Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center" Margin="0,15,0,0">
+                <Button Content="New Chat"
+                        Command="{Binding CreateNewChatSessionCommand}"
+                        Padding="20,10"
+                        Background="#6B8AFF"
+                        Foreground="White"
+                        CornerRadius="20"/>
+                <Button Content="New Tag"
+                        Command="{Binding CreateNewTagSessionCommand}"
+                        Padding="20,10"
+                        Background="#4CAF50"
+                        Foreground="White"
+                        CornerRadius="20"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -5,7 +5,46 @@
 > **Advanced AI tagging and prompt generation studio.**  
 > Leverage the power of modern LLMs to craft perfect Stable Diffusion prompts in a sleek, high-performance desktop app.
 
-![TagForge Screenshot](screenshot.png)
+---
+
+## 📸 Screenshots
+
+<div align="center">
+<table width="100%">
+  <tr>
+    <td width="33%" align="center">
+      <img src="./Screenshots/Agents.png" width="100%" alt="Agents">
+    </td>
+    <td width="33%" align="center">
+      <img src="./Screenshots/Chat.png" width="100%" alt="Chat">
+    </td>
+    <td width="33%" align="center">
+      <img src="./Screenshots/History.png" width="100%" alt="History">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">Agents</td>
+    <td align="center">Chat</td>
+    <td align="center">History</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">
+      <img src="./Screenshots/Logs.png" width="100%" alt="Logs">
+    </td>
+    <td width="33%" align="center">
+      <img src="./Screenshots/Settings.png" width="100%" alt="Settings">
+    </td>
+    <td width="33%" align="center">
+      <img src="./Screenshots/TagGenerator.png" width="100%" alt="TagGenerator">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">Logs</td>
+    <td align="center">Settings</td>
+    <td align="center">TagGenerator</td>
+  </tr>
+</table>
+</div>
 
 ---
 

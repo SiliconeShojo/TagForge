@@ -21,6 +21,3 @@ obj/
 
 # Publish Output (Custom build folders)
 publish/
-
-# Documentation
-RELEASE_GUIDE.md

@@ -15,7 +15,7 @@ namespace TagForge.ViewModels
     {
         private readonly SessionService _sessionService;
         private readonly SettingsService _settingsService;
-        private readonly MainViewModel _mainViewModel;
+        private readonly MainViewModel? _mainViewModel;
         private readonly ProviderFactory _providerFactory;
 
         [ObservableProperty]
@@ -31,7 +31,7 @@ namespace TagForge.ViewModels
         };
         
         [ObservableProperty]
-        private string _helpText = "Select a provider to see configuration details.";
+        private string _helpText = LocalizationService.Instance["Agent.SelectProvider"];
 
         [ObservableProperty]
         private bool _isPasswordVisible;
@@ -104,7 +104,8 @@ namespace TagForge.ViewModels
                     HelpUrl = GetHelpUrl(provider),
                     Description = GetProviderDescription(provider),
 
-                    IconData = GetIconGeometry(provider)
+                    IconData = GetIconGeometry(provider),
+                    VisionOverride = saved?.VisionOverride ?? false
                 };
 
                 // Check for embedded icon resource
@@ -168,7 +169,8 @@ namespace TagForge.ViewModels
                     Provider = p.Provider,
                     EndpointUrl = p.EndpointUrl,
                     SelectedModel = p.SelectedModel,
-                    EncryptedApiKey = EncryptKey(p.ApiKey)
+                    EncryptedApiKey = EncryptKey(p.ApiKey),
+                    VisionOverride = p.VisionOverride
                 });
             }
             _settingsService.CurrentSettings.SavedAgents = configList;
@@ -245,13 +247,13 @@ namespace TagForge.ViewModels
             
             if (providerImpl == null)
             {
-                _mainViewModel?.ShowNotification($"Unknown Provider: {SelectedProfile.Provider}", true);
+                _mainViewModel?.ShowNotification(string.Format(LocalizationService.Instance["Error.UnknownProvider"], SelectedProfile.Provider), true);
                 return;
             }
 
-            HelpText = "Testing connection (Ping)...";
+            HelpText = LocalizationService.Instance["Agent.Testing"];
             _sessionService.IsBusy = true;
-            _sessionService.StatusMessage = "Pinging...";
+            _sessionService.StatusMessage = LocalizationService.Instance["Status.Pinging"];
             
             try 
             {
@@ -259,25 +261,25 @@ namespace TagForge.ViewModels
                 
                 if (success)
                 {
-                    HelpText = "Connection Successful!";
-                    _mainViewModel?.ShowNotification("Connection Verified!", false);
+                    HelpText = LocalizationService.Instance["Agent.Success"];
+                    _mainViewModel?.ShowNotification(LocalizationService.Instance["Notification.Verified"], false);
                 }
                 else
                 {
-                    HelpText = "Connection Failed.";
-                    _mainViewModel?.ShowNotification("Connection Ping Failed.", true);
+                    HelpText = LocalizationService.Instance["Agent.Failed"];
+                    _mainViewModel?.ShowNotification(LocalizationService.Instance["Notification.PingFailed"], true);
                 }
             } 
             catch (Exception ex)
             {
-                HelpText = "Connection Failed.";
-                var errorMsg = $"{SelectedProfile.Provider} connection error: {ex.Message}";
+                HelpText = LocalizationService.Instance["Agent.Failed"];
+                var errorMsg = string.Format(LocalizationService.Instance["Error.ConnectionError"], SelectedProfile.Provider, ex.Message);
                 _mainViewModel?.ShowNotification(errorMsg, true);
             }
             finally
             {
                 _sessionService.IsBusy = false;
-                _sessionService.StatusMessage = "Ready";
+                _sessionService.StatusMessage = LocalizationService.Instance["Status.Ready"];
             }
         }
 
@@ -288,19 +290,19 @@ namespace TagForge.ViewModels
              var providerImpl = _providerFactory.CreateProvider(SelectedProfile.Provider);
              if (providerImpl == null) return;
 
-             HelpText = "Fetching models...";
+             HelpText = LocalizationService.Instance["Agent.FetchingModels"];
              _sessionService.IsBusy = true;
              
              try 
              {
                  await FetchModelsInternal(providerImpl);
-                 HelpText = $"Success! Loaded {SelectedProfile.AvailableModels.Count} models.";
-                 _mainViewModel?.ShowNotification("Models Refreshed", false);
+                 HelpText = string.Format(LocalizationService.Instance["Agent.ModelsLoaded"], SelectedProfile.AvailableModels.Count);
+                 _mainViewModel?.ShowNotification(LocalizationService.Instance["Notification.ModelsRefreshed"], false);
              }
              catch(Exception ex)
              {
-                 HelpText = "Fetch failed.";
-                 _mainViewModel?.ShowNotification($"Fetch Failed: {ex.Message}", true);
+                 HelpText = LocalizationService.Instance["Agent.FetchFailed"];
+                 _mainViewModel?.ShowNotification(string.Format(LocalizationService.Instance["Error.FetchFailed"], ex.Message), true);
              }
              finally
              {
@@ -312,7 +314,7 @@ namespace TagForge.ViewModels
         private void SaveProfile()
         {
             SaveProfiles();
-            _mainViewModel?.ShowNotification("Configuration Saved", false);
+            _mainViewModel?.ShowNotification(LocalizationService.Instance["Notification.ConfigSaved"], false);
         }
 
         private async Task FetchModelsInternal(IAIProvider provider)
@@ -350,12 +352,12 @@ namespace TagForge.ViewModels
              
              if (profile.Provider == "Ollama" || profile.Provider == "LM Studio")
              {
-                 HelpText = $"Pre-loading {profile.SelectedModel}...";
+                 HelpText = string.Format(LocalizationService.Instance["Agent.Help.Preloading"], profile.SelectedModel);
                  
                  // Update global status bar
                  if (_mainViewModel != null)
                  {
-                     _mainViewModel.StatusText = $"Loading {profile.SelectedModel}...";
+                     _mainViewModel.StatusText = string.Format(LocalizationService.Instance["Status.LoadingModel"], profile.SelectedModel);
                      _mainViewModel.StatusColor = "#FFC107"; // Amber/Loading
                  }
 
@@ -365,21 +367,21 @@ namespace TagForge.ViewModels
                      if (provider != null)
                      {
                          await provider.LoadModelAsync(profile.SelectedModel, profile.ApiKey, profile.EndpointUrl);
-                         HelpText = $"Ready. {profile.SelectedModel} loaded.";
+                         HelpText = string.Format(LocalizationService.Instance["Agent.Help.ReadyLoaded"], profile.SelectedModel);
                          
                          if (_mainViewModel != null)
                          {
-                             _mainViewModel.StatusText = "Ready";
+                             _mainViewModel.StatusText = LocalizationService.Instance["Status.Ready"];
                              _mainViewModel.StatusColor = "#4CAF50"; // Green
                          }
                      }
                  }
                  catch (Exception ex)
                  {
-                     HelpText = $"Failed to load model: {ex.Message}";
+                     HelpText = string.Format(LocalizationService.Instance["Agent.Help.LoadFailed"], ex.Message);
                      if (_mainViewModel != null)
                      {
-                         _mainViewModel.StatusText = "Load Failed";
+                         _mainViewModel.StatusText = LocalizationService.Instance["Status.LoadFailed"];
                          _mainViewModel.StatusColor = "#F44336";
                      }
                  }
@@ -422,13 +424,13 @@ namespace TagForge.ViewModels
             return provider switch
             {
                 "Google Gemini" => "Generative AI from Google. High performance and large context window. Requires API Key.",
-                "Groq" => "Ultra-fast inference speed suitable for real-time applications.",
+                "Groq" => "Ultra-fast inference speed. Get key from console.groq.com.",
                 "Hugging Face" => "Access thousands of open-source models via the Hugging Face Inference API.",
                 "OpenRouter" => "A unified interface to access top LLMs from OpenAI, Anthropic, and more.",
                 "LM Studio" => "Connect to your local LM Studio server. Ensure the server is running on localhost:1234.",
                 "Ollama" => "Run powerful local models like Llama 3 on your machine. Ensure Ollama is running.",
 
-                "Custom" => "Connect to any OpenAI-compatible API endpoint.",
+                "Custom" => "Connect to any OpenAI-compatible endpoint.",
                 _ => "Configure your agent details below."
             };
         }
@@ -483,6 +485,9 @@ namespace TagForge.ViewModels
         private Avalonia.Media.IImage? _iconBitmap;
 
         public bool HasCustomIcon => IconBitmap != null;
+
+        [ObservableProperty]
+        private bool _visionOverride;
 
         public ObservableCollection<string> AvailableModels { get; } = new();
     }

@@ -15,9 +15,11 @@ namespace TagForge.Services.Providers
         private const string DefaultBaseUrl = "http://localhost:11434/api/chat";
         private const string TagsUrl = "http://localhost:11434/api/tags";
 
-        public async Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        public async Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
             var url = string.IsNullOrEmpty(baseUrl) ? TagsUrl : baseUrl.Replace("/chat", "/tags");
+            logger?.Invoke("Ping Request", $"GET {url}", false);
+
             using var client = new RestClient(url);
             var request = new RestRequest("", Method.Get);
 
@@ -25,6 +27,8 @@ namespace TagForge.Services.Providers
             
             if (!response.IsSuccessful)
             {
+                logger?.Invoke("Ping Failed", $"HTTP {(int)response.StatusCode}\n{response.Content}", true);
+
                 string errorMessage = "Unknown error";
                 try
                 {
@@ -40,10 +44,11 @@ namespace TagForge.Services.Providers
                 throw new Exception(errorMsg);
             }
             
+            logger?.Invoke("Ping Success", "Connection verified.", true);
             return true;
         }
 
-        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, string? imagePath = null, System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
             var url = string.IsNullOrEmpty(baseUrl) ? DefaultBaseUrl : baseUrl;
             using var client = new RestClient(url);
@@ -55,7 +60,24 @@ namespace TagForge.Services.Providers
             {
                 messages.Add(new { role = "system", content = systemPrompt });
             }
-            messages.Add(new { role = "user", content = userPrompt });
+
+            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            {
+                byte[] imageBytes = await File.ReadAllBytesAsync(imagePath, cancellationToken);
+                string base64Image = Convert.ToBase64String(imageBytes);
+                
+                // Ollama expects "images": ["base64"] within the message object
+                messages.Add(new 
+                { 
+                    role = "user", 
+                    content = userPrompt,
+                    images = new[] { base64Image }
+                });
+            }
+            else
+            {
+                 messages.Add(new { role = "user", content = userPrompt });
+            }
 
             var payload = new
             {
@@ -64,9 +86,18 @@ namespace TagForge.Services.Providers
                 stream = false
             };
 
+            var jsonBody = JsonConvert.SerializeObject(payload);
             request.AddJsonBody(payload);
 
+            if (jsonBody.Length > 2000 && jsonBody.Contains("images"))
+                logger?.Invoke("Generate Request", $"POST {url}\n{jsonBody.Substring(0, 500)} ... [IMAGE DATA] ...", false);
+            else
+                logger?.Invoke("Generate Request", $"POST {url}\n{jsonBody}", false);
+
             var response = await client.ExecuteAsync(request, cancellationToken);
+            
+            logger?.Invoke("Generate Response", $"HTTP {(int)response.StatusCode}\n{response.Content}", true);
+
             if (!response.IsSuccessful)
             {
                 throw new Exception($"Ollama API Error: {response.Content}");
@@ -77,15 +108,20 @@ namespace TagForge.Services.Providers
             return text ?? string.Empty;
         }
 
-        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
             var url = string.IsNullOrEmpty(baseUrl) ? TagsUrl : baseUrl.Replace("/chat", "/tags");
             if (url.EndsWith("/api")) url += "/tags"; // basic heuristic correction
+
+            logger?.Invoke("Fetch Models Request", $"GET {url}", false);
 
             using var client = new RestClient(url);
             var request = new RestRequest("", Method.Get);
             
             var response = await client.ExecuteAsync(request, cancellationToken);
+            
+            logger?.Invoke("Fetch Models Response", $"HTTP {(int)response.StatusCode}\n{response.Content}", true);
+
             var models = new List<string>();
 
             if (response.IsSuccessful)
@@ -106,7 +142,8 @@ namespace TagForge.Services.Providers
             
             return models.Count > 0 ? models : new List<string> { "llama3", "mistral", "gemma" };
         }
-        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
+
+        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, string? imagePath = null, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
             var url = string.IsNullOrEmpty(baseUrl) ? DefaultBaseUrl : baseUrl;
             using var client = new HttpClient();
@@ -116,7 +153,23 @@ namespace TagForge.Services.Providers
             {
                 messages.Add(new { role = "system", content = systemPrompt });
             }
-            messages.Add(new { role = "user", content = userPrompt });
+            
+            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            {
+                byte[] imageBytes = await File.ReadAllBytesAsync(imagePath, cancellationToken);
+                string base64Image = Convert.ToBase64String(imageBytes);
+                
+                messages.Add(new 
+                { 
+                    role = "user", 
+                    content = userPrompt,
+                    images = new[] { base64Image }
+                });
+            }
+            else
+            {
+                messages.Add(new { role = "user", content = userPrompt });
+            }
 
             var payload = new
             {
@@ -125,19 +178,28 @@ namespace TagForge.Services.Providers
                 stream = true
             };
             
+            var jsonBody = JsonConvert.SerializeObject(payload);
+            if (jsonBody.Length > 2000 && jsonBody.Contains("images"))
+                 logger?.Invoke("Stream Request", $"POST {url}\n{jsonBody.Substring(0, 1000)} ... [IMAGE DATA] ...", false);
+            else
+                 logger?.Invoke("Stream Request", $"POST {url}\n{jsonBody}", false);
+
             var request = new HttpRequestMessage(HttpMethod.Post, url);
-            request.Content = new StringContent(JsonConvert.SerializeObject(payload), System.Text.Encoding.UTF8, "application/json");
+            request.Content = new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
 
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                  var err = await response.Content.ReadAsStringAsync();
+                 logger?.Invoke("Stream Failed", $"HTTP {(int)response.StatusCode}\n{err}", true);
                  throw new Exception($"Ollama API Error: {err}");
             }
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream);
             
+            logger?.Invoke("Stream Started", "HTTP 200 OK - Streaming...", true);
+
             while (!reader.EndOfStream)
             {
                  if (cancellationToken.IsCancellationRequested) break;
@@ -157,6 +219,7 @@ namespace TagForge.Services.Providers
                  if (!string.IsNullOrEmpty(content)) yield return content;
                  if (done) break;
             }
+            logger?.Invoke("Stream Completed", "Stream finished successfully.", true);
         }
         public async Task LoadModelAsync(string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
         {

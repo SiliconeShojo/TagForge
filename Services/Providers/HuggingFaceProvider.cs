@@ -35,7 +35,7 @@ namespace TagForge.Services.Providers
             return $"{url}/models";
         }
 
-        public async Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        public async Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
             // Validate API key is provided
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -44,8 +44,9 @@ namespace TagForge.Services.Providers
             }
 
             // Revert to verifying /models as it's the standard discovery endpoint.
-            // Some endpoints (like TGI) might be public, but checking for empty key (above) prevents obvious errors.
             var url = GetModelsUrl(baseUrl);
+            logger?.Invoke("Ping Request", $"GET {url}", false);
+
             using var client = new RestClient(url);
             var request = new RestRequest("", Method.Get);
             request.AddHeader("Authorization", $"Bearer {apiKey}");
@@ -54,6 +55,8 @@ namespace TagForge.Services.Providers
             
             if (!response.IsSuccessful)
             {
+                logger?.Invoke("Ping Failed", $"HTTP {(int)response.StatusCode}\n{response.Content}", true);
+                
                 string errorMessage = "Unknown error";
                 try
                 {
@@ -69,13 +72,15 @@ namespace TagForge.Services.Providers
                 throw new Exception(errorMsg);
             }
             
+            logger?.Invoke("Ping Success", "Connection verified.", true);
             return true;
         }
 
 
-        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, string? imagePath = null, System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
-            var client = new RestClient(GetChatUrl(baseUrl));
+            var url = GetChatUrl(baseUrl);
+            var client = new RestClient(url);
             var request = new RestRequest("", Method.Post);
             request.AddHeader("Authorization", $"Bearer {apiKey}");
             request.AddHeader("Content-Type", "application/json");
@@ -85,7 +90,29 @@ namespace TagForge.Services.Providers
             {
                 messages.Add(new { role = "system", content = systemPrompt });
             }
-            messages.Add(new { role = "user", content = userPrompt });
+
+            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            {
+                byte[] imageBytes = await File.ReadAllBytesAsync(imagePath, cancellationToken);
+                string base64Image = Convert.ToBase64String(imageBytes);
+                string mimeType = "image/jpeg";
+                if (imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) mimeType = "image/png";
+                if (imagePath.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)) mimeType = "image/webp";
+
+                messages.Add(new 
+                { 
+                    role = "user", 
+                    content = new object[] 
+                    {
+                        new { type = "text", text = userPrompt },
+                        new { type = "image_url", image_url = new { url = $"data:{mimeType};base64,{base64Image}" } }
+                    }
+                });
+            }
+            else
+            {
+                messages.Add(new { role = "user", content = userPrompt });
+            }
 
             var payload = new
             {
@@ -94,9 +121,20 @@ namespace TagForge.Services.Providers
                 max_tokens = 1024
             };
 
+            var jsonBody = JsonConvert.SerializeObject(payload);
             request.AddJsonBody(payload);
 
+            // Log Request (Truncate Base64)
+            if (jsonBody.Length > 2000 && jsonBody.Contains("base64,"))
+                logger?.Invoke("Generate Request", $"POST {url}\n{jsonBody.Substring(0, 500)} ... [IMAGE DATA] ...", false);
+            else
+                logger?.Invoke("Generate Request", $"POST {url}\n{jsonBody}", false);
+
             var response = await client.ExecuteAsync(request, cancellationToken);
+            
+            // Log Response
+            logger?.Invoke("Generate Response", $"HTTP {(int)response.StatusCode}\n{response.Content}", true);
+
             if (!response.IsSuccessful)
             {
                 var errorMsg = $"HTTP {(int)response.StatusCode} {response.StatusCode}\n" +
@@ -117,13 +155,19 @@ namespace TagForge.Services.Providers
             }
         }
 
-        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
-            using var client = new RestClient(GetModelsUrl(baseUrl));
+            var url = GetModelsUrl(baseUrl);
+            logger?.Invoke("Fetch Models Request", $"GET {url}", false);
+
+            using var client = new RestClient(url);
             var request = new RestRequest("", Method.Get);
             request.AddHeader("Authorization", $"Bearer {apiKey}");
 
             var response = await client.ExecuteAsync(request, cancellationToken);
+            
+            logger?.Invoke("Fetch Models Response", $"HTTP {(int)response.StatusCode}\n{response.Content}", true);
+
             var models = new List<string>();
 
             if (response.IsSuccessful)
@@ -163,8 +207,9 @@ namespace TagForge.Services.Providers
             return models;
         }
 
-        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, string? imagePath = null, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
+            var url = GetChatUrl(baseUrl);
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 
@@ -173,7 +218,29 @@ namespace TagForge.Services.Providers
             {
                 messages.Add(new { role = "system", content = systemPrompt });
             }
-            messages.Add(new { role = "user", content = userPrompt });
+            
+            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            {
+                byte[] imageBytes = await File.ReadAllBytesAsync(imagePath, cancellationToken);
+                string base64Image = Convert.ToBase64String(imageBytes);
+                string mimeType = "image/jpeg";
+                if (imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) mimeType = "image/png";
+                if (imagePath.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)) mimeType = "image/webp";
+
+                messages.Add(new 
+                { 
+                    role = "user", 
+                    content = new object[] 
+                    {
+                        new { type = "text", text = userPrompt },
+                        new { type = "image_url", image_url = new { url = $"data:{mimeType};base64,{base64Image}" } }
+                    }
+                });
+            }
+            else
+            {
+                messages.Add(new { role = "user", content = userPrompt });
+            }
 
             var payload = new
             {
@@ -183,18 +250,32 @@ namespace TagForge.Services.Providers
                 max_tokens = 1024
             };
 
-            var request = new HttpRequestMessage(HttpMethod.Post, GetChatUrl(baseUrl));
-            request.Content = new StringContent(JsonConvert.SerializeObject(payload), System.Text.Encoding.UTF8, "application/json");
+            var jsonBody = JsonConvert.SerializeObject(payload);
+            
+            if (jsonBody.Length > 2000 && jsonBody.Contains("base64,"))
+            {
+                 logger?.Invoke("Stream Request", $"POST {url}\n{jsonBody.Substring(0, 1000)} ... [IMAGE DATA] ...", false);
+            }
+            else
+            {
+                 logger?.Invoke("Stream Request", $"POST {url}\n{jsonBody}", false);
+            }
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Content = new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
 
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                  var err = await response.Content.ReadAsStringAsync();
+                 logger?.Invoke("Stream Failed", $"HTTP {(int)response.StatusCode}\n{err}", true);
                  throw new Exception($"Hugging Face API Error: {err}");
             }
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream);
+
+            logger?.Invoke("Stream Started", "HTTP 200 OK - Streaming...", true);
 
             while (!reader.EndOfStream)
             {
@@ -217,6 +298,7 @@ namespace TagForge.Services.Providers
                     if (!string.IsNullOrEmpty(content)) yield return content;
                 }
             }
+            logger?.Invoke("Stream Completed", "Stream finished successfully.", true);
         }
         public Task LoadModelAsync(string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default) => Task.CompletedTask;
     }

@@ -23,6 +23,20 @@
       <conv:RoleToMessageColumnConverter x:Key="MessageCol"/>
       <conv:RoleToAvatarMarginConverter x:Key="AvatarMargin"/>
   </UserControl.Resources>
+
+   <UserControl.Styles>
+       <Style Selector="Border.error">
+           <Setter Property="Background" Value="#2A1010"/>
+           <Setter Property="BorderBrush" Value="#8B0000"/>
+           <Setter Property="BorderThickness" Value="1"/>
+       </Style>
+       <Style Selector="Border.error TextBlock">
+           <Setter Property="Foreground" Value="#FFCCCC"/>
+       </Style>
+       <Style Selector="Border.error SelectableTextBlock">
+           <Setter Property="Foreground" Value="#FFCCCC"/>
+       </Style>
+   </UserControl.Styles>
   
   <Grid>
       
@@ -94,11 +108,19 @@
                               <Border Grid.Column="{Binding Role, Converter={StaticResource MessageCol}}"
                                       CornerRadius="{Binding Role, Converter={StaticResource RoleCorner}}" 
                                       Background="{Binding Role, Converter={StaticResource RoleBg}}" 
+                                      Classes.error="{Binding IsError}"
                                       Padding="15" MaxWidth="600"
                                       BoxShadow="0 2 5 0 #20000000">
                                   <StackPanel Spacing="5">
                                       
-                                      <Panel>
+                                      <StackPanel Spacing="0">
+                                          <!-- Error Header -->
+                                          <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsError}" Margin="0">
+                                               <PathIcon Data="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" 
+                                                         Foreground="#FF5252" Width="16" Height="16"/>
+                                               <TextBlock Text="Error" FontWeight="Bold" Foreground="#FF5252" VerticalAlignment="Center" FontSize="14"/>
+                                          </StackPanel>
+
                                           <!-- Loading Model Indicator -->
                                           <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsLoadingModel}" Margin="0,5">
                                               <ProgressBar IsIndeterminate="True" Width="60" Height="2" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
@@ -112,9 +134,18 @@
                                           </StackPanel>
 
                                           <!-- Content -->
-                                          <SelectableTextBlock Text="{Binding Content}" TextWrapping="Wrap" LineHeight="22" Foreground="#E0E0E0"
-                                                               IsVisible="{Binding !IsThinking}"/>
-                                      </Panel>
+                                          <StackPanel IsVisible="{Binding !IsThinking}">
+                                                <SelectableTextBlock Text="{Binding Content}" TextWrapping="Wrap" LineHeight="22" Foreground="#E0E0E0"/>
+                                                
+                                                <!-- Error Footer -->
+                                                <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,8,0,0" IsVisible="{Binding IsError}">
+                                                    <PathIcon Data="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z"
+                                                              Width="12" Height="12" Foreground="#FFCCCC" Opacity="0.7"/>
+                                                    <TextBlock Text="{ext:Localize Error.CheckLogs}" 
+                                                               Foreground="#FFCCCC" FontSize="11" Opacity="0.8" FontStyle="Italic"/>
+                                                </StackPanel>
+                                          </StackPanel>
+                                      </StackPanel>
                                       
                                       <!-- Footer / Timestamp -->
                                       <Grid ColumnDefinitions="*, Auto, Auto" Margin="0,5,0,0">

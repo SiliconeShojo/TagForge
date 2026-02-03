@@ -40,7 +40,7 @@ namespace TagForge.Services
             // Load Personas from Settings
             foreach (var p in settingsService.CurrentSettings.SavedPersonas)
             {
-                Personas.Add(new Persona(p.Name, p.SystemPrompt));
+                Personas.Add(new Persona(p.Name, p.SystemPrompt, isReadOnly: p.IsReadOnly));
             }
             
             // Restore Active Persona
@@ -48,7 +48,7 @@ namespace TagForge.Services
             ActivePersona = Personas.FirstOrDefault(p => p.Name == lastPersona) ?? Personas.FirstOrDefault();
         }
 
-        partial void OnActivePersonaChanged(Persona? value)
+        partial void OnActivePersonaChanged(Persona value)
         {
             // Save selected persona to settings
             if (_settingsService != null && value != null)
@@ -64,43 +64,25 @@ namespace TagForge.Services
         // LOGGING
         public ObservableCollection<LogEntry> Logs { get; } = new();
 
-        public void Log(string message, LogLevel level = LogLevel.Info)
+        public void Log(string message, LogLevel level = LogLevel.Info, string? details = null)
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(() => 
             {
-                Logs.Add(new LogEntry(message, level));
+                Logs.Add(new LogEntry(message, level, details));
                 if (Logs.Count > 1000) Logs.RemoveAt(0); // Cap size
             });
         }
 
         public void LogError(string context, string errorDetails)
         {
-            var message = $"{context}: {errorDetails}";
-            Log(message, LogLevel.Error);
+            Log($"{context} Failed", LogLevel.Error, errorDetails);
+        }
+
+        public void LogApi(string title, string content, bool isResponse)
+        {
+            Log(title, isResponse ? LogLevel.ApiResponse : LogLevel.ApiRequest, content);
         }
     }
 
-    public enum LogLevel { Info, Warning, Error }
 
-    public class LogEntry
-    {
-        public string Timestamp { get; }
-        public string Message { get; }
-        public LogLevel Level { get; }
-        
-        public string Color => Level switch 
-        {
-            LogLevel.Info => "#CCCCCC",
-            LogLevel.Warning => "#FFC107",
-            LogLevel.Error => "#F44336",
-            _ => "#FFFFFF"
-        };
-        
-        public LogEntry(string message, LogLevel level)
-        {
-            Timestamp = System.DateTime.Now.ToString("HH:mm:ss");
-            Message = message;
-            Level = level;
-        }
-    }
 }

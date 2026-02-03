@@ -17,6 +17,7 @@ namespace TagForge.Services
 
         public async Task<UpdateInfo?> CheckForUpdatesAsync()
         {
+            // Removed OS check to allow notification on all platforms
             try 
             {
                 var options = new RestClientOptions($"https://api.github.com/repos/{Owner}/{Repo}/releases/latest");
@@ -30,16 +31,18 @@ namespace TagForge.Services
                 var json = JObject.Parse(response.Content);
                 var tagName = json["tag_name"]?.ToString();
                 var body = json["body"]?.ToString();
+                var releaseUrl = json["html_url"]?.ToString(); // Get release page URL
                 var assets = json["assets"] as JArray;
                 
-                // Find exe asset
+                // Find exe asset (Windows only)
                 string? downloadUrl = null;
                 if (assets != null)
                 {
                     foreach(var asset in assets)
                     {
                         var name = asset["name"]?.ToString();
-                        if (name != null && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        // Only look for .exe or specific windows asset
+                        if (name != null && (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)))
                         {
                             downloadUrl = asset["browser_download_url"]?.ToString();
                             break;
@@ -47,23 +50,31 @@ namespace TagForge.Services
                     }
                 }
 
-                if (tagName != null && downloadUrl != null)
+                if (tagName != null)
                 {
                     var currentVerStr = CurrentVersion.TrimStart('v');
                     var remoteVerStr = tagName.TrimStart('v');
+                    bool isUpdate = false;
 
                     if (Version.TryParse(currentVerStr, out var currentVer) && 
                         Version.TryParse(remoteVerStr, out var remoteVer))
                     {
-                        if (remoteVer > currentVer)
-                        {
-                            return new UpdateInfo { Version = tagName, Changelog = body, DownloadUrl = downloadUrl };
-                        }
+                        if (remoteVer > currentVer) isUpdate = true;
                     }
                     else if (tagName != CurrentVersion)
                     {
-                         // Fallback to string comparison if parsing fails
-                         return new UpdateInfo { Version = tagName, Changelog = body, DownloadUrl = downloadUrl };
+                         isUpdate = true;
+                    }
+
+                    if (isUpdate)
+                    {
+                        return new UpdateInfo 
+                        { 
+                            Version = tagName, 
+                            Changelog = body, 
+                            DownloadUrl = downloadUrl, // May be null on Linux/Mac
+                            ReleaseUrl = releaseUrl 
+                        };
                     }
                 }
             }
@@ -76,8 +87,19 @@ namespace TagForge.Services
 
         public async Task PerformUpdateAsync(string downloadUrl)
         {
-             // Download to temp
-             var tempPath = Path.GetTempFileName().Replace(".tmp", ".exe");
+             if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+             {
+                 throw new PlatformNotSupportedException("Auto-update is only supported on Windows.");
+             }
+
+             // Resolve paths first
+             var currentExe = Environment.ProcessPath;
+             if (string.IsNullOrEmpty(currentExe)) currentExe = Process.GetCurrentProcess().MainModule.FileName;
+             var currentDir = Path.GetDirectoryName(currentExe);
+
+            // Define local download path
+             // We first download to a temp file to prevent users from opening incomplete downloads
+             var tempFilePath = Path.Combine(currentDir, "TagForge.Update.tmp");
              
              // Download
              var options = new RestClientOptions(downloadUrl);
@@ -86,23 +108,22 @@ namespace TagForge.Services
              var response = await client.ExecuteAsync(request);
              
              if (!response.IsSuccessful || response.RawBytes == null) throw new Exception("Download failed");
-             File.WriteAllBytes(tempPath, response.RawBytes);
+             
+             // Save to local dir (will overwrite if exists from previous failed run)
+             File.WriteAllBytes(tempFilePath, response.RawBytes);
 
              // Create Batch Script
-             // Use Environment.ProcessPath for net6+ reliable exe path
-             var currentExe = Environment.ProcessPath;
-             if (string.IsNullOrEmpty(currentExe)) currentExe = Process.GetCurrentProcess().MainModule.FileName;
-             
-             var currentDir = Path.GetDirectoryName(currentExe);
+             // Force target to be TagForge.exe
+             var targetExe = Path.Combine(currentDir, "TagForge.exe");
              var batPath = Path.Combine(currentDir, "update.bat");
              
-             // Script: Wait 2s, Move temp to current, Start current, Del script
+             // Script: Wait 1s (for app to close), Move Update -> Target, Start Target, Del Script
              var script = $@"
 @echo off
-timeout /t 3 /nobreak > nul
-move /Y ""{tempPath}"" ""{currentExe}""
+timeout /t 1 /nobreak > nul
+move /Y ""{tempFilePath}"" ""{targetExe}""
 cd /d ""{currentDir}""
-start """" ""{currentExe}""
+start """" ""{targetExe}""
 del ""%~f0""
 ";
              File.WriteAllText(batPath, script);
@@ -126,6 +147,7 @@ del ""%~f0""
     {
         public string Version { get; set; }
         public string Changelog { get; set; }
-        public string DownloadUrl { get; set; }
+        public string? DownloadUrl { get; set; }
+        public string? ReleaseUrl { get; set; }
     }
 }

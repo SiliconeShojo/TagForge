@@ -15,17 +15,24 @@ namespace TagForge.Models
 
         [ObservableProperty]
         private bool _isLoadingModel;
+
+        [ObservableProperty]
+        private bool _isError;
         
         public DateTime Timestamp { get; set; }
         [ObservableProperty]
         private string? _details;
 
-        public ChatMessage(string role, string content, string? details = null)
+        [ObservableProperty]
+        private string? _imagePath;
+
+        public ChatMessage(string role, string content, string? details = null, string? imagePath = null)
         {
             Role = role;
             _content = content;
             Timestamp = DateTime.Now;
             _details = details;
+            _imagePath = imagePath;
         }
     }
 }

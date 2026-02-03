@@ -200,9 +200,23 @@ namespace TagForge.ViewModels
                         }
                     });
                     
-                    // Producer Loop
+                    // Log Request
+                    _sessionService.Log($"Chat Request (Model: {profile.SelectedModel})", LogLevel.Info);
+
+                    // Producer Loop: Fetches from Network
+                    Action<string, string, bool> debugger = (title, msg, isSuccess) => 
+                    {
+                        var level = isSuccess ? LogLevel.Success : LogLevel.Info;
+                        if (title.Contains("Request")) level = LogLevel.ApiRequest;
+                        else if (title.Contains("Response")) level = LogLevel.ApiResponse;
+                        else if (title.Contains("Error") || title.Contains("Failed")) level = LogLevel.Error;
+
+                        if (!string.IsNullOrWhiteSpace(msg))
+                            _sessionService.Log($"{title}: {msg}", level);
+                    };
+
                     bool firstToken = true;
-                    await foreach (var token in provider.GenerateStreamingAsync(systemPrompt, userMsg.Content, profile.SelectedModel, profile.ApiKey, profile.EndpointUrl, _cts.Token))
+                    await foreach (var token in provider.GenerateStreamingAsync(systemPrompt, userMsg.Content, profile.SelectedModel, profile.ApiKey, profile.EndpointUrl, cancellationToken: _cts.Token, logger: debugger))
                     {
                          if (firstToken)
                          {
@@ -260,11 +274,13 @@ namespace TagForge.ViewModels
                     var errorDetails = $"Exception Type: {ex.GetType().Name}\nMessage: {ex.Message}\nStackTrace: {ex.StackTrace}";
                     _sessionService.LogError("Chat Generation", errorDetails);
                     
-                    var userMessage = ParseErrorMessage(ex);
+                    // Sanitize user message
+                    var rawError = ParseErrorMessage(ex);
                     Dispatcher.UIThread.Invoke(() => 
                     {
                         aiMsg.IsThinking = false;
-                        aiMsg.Content = $"Generation Failed\n\n{userMessage}";
+                        aiMsg.IsError = true;
+                        aiMsg.Content = rawError; 
                     });
                 }
                 });
@@ -348,7 +364,7 @@ namespace TagForge.ViewModels
                     return trimmed;
             }
             
-            return "An error occurred. Check the Logs tab for details.";
+            return "An error occurred.";
         }
 
         private System.Threading.CancellationTokenSource? _cts;

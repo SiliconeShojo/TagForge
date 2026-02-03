@@ -10,7 +10,22 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            asset_name: TagForge-win-x64.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            asset_name: TagForge-linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+            asset_name: TagForge-osx-arm64
+          - os: macos-latest
+            rid: osx-x64
+            asset_name: TagForge-osx-x64
 
     steps:
     - name: Checkout
@@ -27,22 +42,27 @@ jobs:
       run: dotnet restore
 
     - name: Publish
-      run: dotnet publish TagForge.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o ./publish
+      run: |
+        dotnet publish TagForge.csproj -c Release -r ${{ matrix.rid }} --self-contained -p:PublishSingleFile=true -o ./publish
+    
+    # Rename artifacts to include OS/Arch in filename
+    - name: Rename Artifact (Windows)
+      if: matrix.os == 'windows-latest'
+      run: Move-Item ./publish/TagForge.exe ./publish/${{ matrix.asset_name }}
+
+    - name: Rename Artifact (Unix)
+      if: matrix.os != 'windows-latest'
+      run: mv ./publish/TagForge ./publish/${{ matrix.asset_name }}
 
     - name: Get version from tag
       id: get_version
-      run: |
-        $version = "${{ github.ref_name }}"
-        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-      shell: pwsh
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      shell: bash
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: ./publish/TagForge.exe
-        name: Release ${{ steps.get_version.outputs.VERSION }}
-        generate_release_notes: true
-        draft: false
-        prerelease: false
+        files: ./publish/${{ matrix.asset_name }}
+        # Note: If multiple jobs run this, they will edit the same release safely.
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

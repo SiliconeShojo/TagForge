@@ -1,360 +1,168 @@
 # 🌍 Translation Guide for TagForge
 
-Thank you for helping make TagForge accessible to users around the world! This guide will walk you through everything you need to know to contribute a translation, even if you've never contributed to a GitHub project before.
+Thank you for helping make **TagForge** accessible to creators worldwide! 
+
+This guide outlines how to add a new language or improve an existing translation. Whether you are a developer or a localization enthusiast, your contribution is highly valued.
+
+<br>
 
 ---
 
-## 📚 Table of Contents
+<br>
 
-1. [What is Localization?](#what-is-localization)
-2. [Before You Start](#before-you-start)
-3. [Step-by-Step Translation Process](#step-by-step-translation-process)
-4. [Understanding the Translation Format](#understanding-the-translation-format)
-5. [Testing Your Translation](#testing-your-translation)
-6. [Submitting Your Translation](#submitting-your-translation)
-7. [Tips for Quality Translations](#tips-for-quality-translations)
+## 🚀 Quick Start
 
----
+1.  **Check Existing Languages:** Look in `Assets/Localization/` to see if your language exists.
+2.  **Get the Template:** Use `en-US.json` as your base.
+3.  **Create Your File:** Rename it to your locale code (e.g., `de-DE.json`).
+4.  **Translate:** Edit the values (right side) while keeping keys (left side) intact.
+5.  **Submit:** Open a Pull Request or create an Issue.
 
-## What is Localization?
-
-**Localization** (often shortened to "L10n") is the process of adapting software to different languages and regions. When you contribute a translation, you're helping users in your country or language community use TagForge in their native language.
-
-**Examples:**
-- A French user can see "Enregistrer" instead of "Save"
-- A Spanish user can read "Configuración" instead of "Settings"
-- A Japanese user can navigate the app entirely in 日本語
+<br>
 
 ---
 
-## Before You Start
+<br>
 
-### What You'll Need
+## 📂 Step 1: File Setup
 
-1. **A text editor** - Any text editor works! Examples:
-   - **Windows**: Notepad, Notepad++, VS Code
-   - **Mac**: TextEdit, VS Code
-   - **Online**: You can even use GitHub's online editor
+> [!NOTE]
+> The project uses standard **JSON** key-value pairs. You only need a basic text editor (Notepad, TextEdit, VS Code) to work on these files.
 
-2. **Basic understanding of JSON** - Don't worry! I'll explain the format below. It's very simple.
+### 1. Get the English Template
+You need the master file: `Assets/Localization/en-US.json`.
 
-3. **Fluency in your target language** - You should be a native speaker or highly proficient.
+* **Option A (Browser):** [Click here](https://github.com/SiliconeShojo/TagForge/blob/main/Assets/Localization/en-US.json), click **Raw**, and save it (CTRL+S).
+* **Option B (Git):**
+    ```bash
+    git clone [https://github.com/SiliconeShojo/TagForge.git](https://github.com/SiliconeShojo/TagForge.git)
+    cd TagForge/Assets/Localization
+    ```
 
-### Check if Your Language Already Exists
+### 2. Create Your Language File
+Copy the template and rename it using the **IETF Language Tag** format (`language-COUNTRY`).
 
-Before starting, check the `Assets/Localization/` folder in the TagForge repository to see if your language is already there:
+| Language | Filename |
+| :--- | :--- |
+| **German** (Germany) | `de-DE.json` |
+| **Portuguese** (Brazil) | `pt-BR.json` |
+| **Chinese** (Simplified) | `zh-CN.json` |
+| **Russian** (Russia) | `ru-RU.json` |
 
-**Current Translations:**
-- 🇺🇸 English (`en-US.json`) - Base language
-- 🇫🇷 French (`fr-FR.json`)
-- 🇪🇸 Spanish (`es-ES.json`)
-
-If your language is already listed, you can help improve it! Otherwise, you'll create a new file.
-
----
-
-## Step-by-Step Translation Process
-
-### Step 1: Get the English Template
-
-The English file (`en-US.json`) serves as the master template. You'll copy this and translate it.
-
-**Where to find it:**
-`TagForge/Assets/Localization/en-US.json`
-
-**Option A - Download from GitHub:**
-1. Go to the [TagForge repository](https://github.com/SiliconeShojo/TagForge)
-2. Navigate to `Assets/Localization/`
-3. Click on `en-US.json`
-4. Click the "Raw" button
-5. Right-click → "Save As" and save it to your computer
-
-**Option B - Clone the repository:**
-```bash
-git clone https://github.com/SiliconeShojo/TagForge.git
-cd TagForge/Assets/Localization
-```
-
-### Step 2: Create Your Language File
-
-**Naming Convention:**
-Use the standard `language-COUNTRY` format. The language code should be lowercase, and the country code uppercase.
-
-**Examples:**
-- German (Germany): `de-DE.json`
-- Japanese (Japan): `ja-JP.json`
-- Portuguese (Brazil): `pt-BR.json`
-- Chinese (Simplified): `zh-CN.json`
-- Russian (Russia): `ru-RU.json`
-
-**How to create it:**
-1. Copy `en-US.json`
-2. Rename it to your language code (e.g., `de-DE.json`)
-3. Open it in your text editor
-
-### Step 3: Translate the Values
-
-Now comes the fun part! Open your new file and start translating.
-
-**IMPORTANT RULES:**
-
-✅ **DO:**
-- Translate the text on the **right side** (after the `:`)
-- Keep the **keys on the left side** exactly as they are
-- Preserve placeholders like `{0}`, `{1}`, etc.
-- Use natural, native-sounding language
-
-❌ **DON'T:**
-- Change the keys (left side before `:`)
-- Remove special characters like `{0}` or `\n`
-- Add or remove commas between lines
+<br>
 
 ---
 
-## Understanding the Translation Format
+<br>
 
-### Basic Structure
+## ✍️ Step 2: Translation Rules
 
-Each translation file is a **JSON object** with key-value pairs:
+Open your new file in any text editor.
+
+### The Format
+
+> [!WARNING]
+> **Do not change the keys on the left side.** The app uses these keys to find the text. If you change them, your translation will not load.
 
 ```json
 {
-  "KeyName": "Value to translate"
+  "Settings.Title": "Settings",      // ❌ DON'T CHANGE LEFT
+  "Settings.Save": "Enregistrer"     // ✅ TRANSLATE RIGHT
 }
 ```
 
-### Example Entry
+### ⚠️ Critical Rules
 
-**Original (English):**
-```json
-{
-  "Settings.Save": "Save"
-}
-```
+| Feature | Rule | Example |
+| :--- | :--- | :--- |
+| **Placeholders** | **Keep `{0}`, `{1}` intact.** You may move them to fit your grammar. | `"Loaded {0} models"` → `"{0} modèles chargés"` |
+| **Newlines** | **Keep `\n` intact.** This forces a line break in the UI. | `"Error.\nTry again"` → `"Erreur.\nRéessayez"` |
+| **Quotes** | **Keep `\"` intact.** This displays a literal quote mark. | `"Say \"Hello\""` → `"Dites \"Bonjour\""` |
 
-**Translated (French):**
-```json
-{
-  "Settings.Save": "Enregistrer"
-}
-```
+> [!IMPORTANT]
+> **Syntax Watch:** Do not remove the comma `,` at the end of lines. Doing so will break the JSON structure.
 
-**Breakdown:**
-- `"Settings.Save"` = **KEY** (Don't change this!)
-- `"Enregistrer"` = **VALUE** (Translate this!)
-
-### Handling Placeholders
-
-Some strings contain **placeholders** like `{0}`, `{1}`, etc. These are replaced with dynamic content at runtime.
-
-**Example:**
-```json
-"Agent.ModelsLoaded": "Success! Loaded {0} models."
-```
-
-In this case:
-- `{0}` will be replaced with a number (e.g., "15")
-- The full text might appear as: "Success! Loaded 15 models."
-
-**When translating:**
-- **Keep the placeholder** `{0}` in your translation
-- **Move it** to where it makes sense grammatically in your language
-
-**French example:**
-```json
-"Agent.ModelsLoaded": "Succès ! {0} modèles chargés."
-```
-
-Notice how `{0}` moved to a different position because French grammar requires it.
-
-### Special Characters
-
-Some strings contain:
-- **`\n`** = Line break (new line)
-- **`\"`** = Quotation mark (escaped)
-- **`\\`** = Backslash (escaped)
-
-**Example:**
-```json
-"Error.Message": "Connection failed.\nPlease check your API key."
-```
-
-Keep `\n` in your translation where you want the line break to appear.
-
-### Complete Example
-
-Here's a before/after comparison:
-
-**Before (English):**
-```json
-{
-  "Settings.Title": "Settings",
-  "Settings.Language": "Language",
-  "Settings.Save": "Save",
-  "Agent.ApiKey": "API Key",
-  "Agent.ModelsLoaded": "Success! Loaded {0} models.",
-  "Error.ConnectionFailed": "Connection failed.\nCheck your settings."
-}
-```
-
-**After (German):**
-```json
-{
-  "Settings.Title": "Einstellungen",
-  "Settings.Language": "Sprache",
-  "Settings.Save": "Speichern",
-  "Agent.ApiKey": "API-Schlüssel",
-  "Agent.ModelsLoaded": "Erfolg! {0} Modelle geladen.",
-  "Error.ConnectionFailed": "Verbindung fehlgeschlagen.\nÜberprüfen Sie Ihre Einstellungen."
-}
-```
+<br>
 
 ---
 
-## Testing Your Translation
+<br>
 
-### Method 1: For Developers
+## 🧪 Step 3: Testing & Integration
 
-If you have .NET 9 installed and can build the project:
+### For Non-Developers
+If you cannot build the app, don't worry!
 
-1. **Add your file** to `Assets/Localization/your-language.json`
+> [!TIP]
+> **Sanity Check:** Copy and paste your file content into [JSONLint](https://jsonlint.com/) before submitting. It will tell you if you missed a comma or a quote. **I** will handle the final integration!
 
-2. **Register your language** in `Services/LocalizationService.cs`:
-   - Find the `GetAvailableLanguages()` method
-   - Add your language to the list:
-     ```csharp
-     var languages = new List<LanguageInfo>
-     {
-         new("en-US", "English"),
-         new("fr-FR", "Français"),
-         new("your-CODE", "YourLanguageNativeName")  // Add this line
-     };
-     ```
+### For Developers (Build & Test)
+If you have the .NET SDK installed, you can see your translation in-app immediately.
 
-3. **Build and run:**
-   ```bash
-   dotnet build
-   dotnet run
-   ```
+<details>
+<summary><b>🛠️ Click to expand Developer Integration Steps</b></summary>
 
-4. **Test in the app:**
-   - Open TagForge
-   - Go to Settings → Language
-   - Select your language
-   - Navigate through all screens to verify translations
+1.  **Place your file:** Ensure your new `.json` file is in `Assets/Localization/`.
+2.  **Register the Language:**
+    Open `Services/LocalizationService.cs` and find `GetAvailableLanguages()`. Add your entry using the **native name**:
 
-### Method 2: For Non-Developers
+    ```csharp
+    var languages = new List<LanguageInfo>
+    {
+        new("en-US", "English"),
+        new("fr-FR", "Français"),
+        new("de-DE", "Deutsch") // <--- Add this line
+    };
+    ```
+3.  **Build & Run:**
+    ```bash
+    dotnet run
+    ```
+4.  **Verify:** Go to **Settings > Language** and select your new language. Check for UI overflow or missing text.
 
-If you can't build the app, you can:
+</details>
 
-1. **Submit your translation** (see next section)
-2. **Request a test build** - Mention in your Pull Request or Issue that you'd like to test it
-
----
-
-## Submitting Your Translation
-
-You have two options depending on your comfort level with GitHub.
-
-### Option 1: GitHub Pull Request (Recommended)
-
-**If you're familiar with Git:**
-
-1. **Fork the repository** on GitHub
-2. **Clone your fork:**
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/TagForge.git
-   ```
-3. **Create a new branch:**
-   ```bash
-   git checkout -b add-translation-LANGUAGE
-   ```
-4. **Add your translation file** to `Assets/Localization/`
-5. **Update `LocalizationService.cs`** (see "Testing" section above)
-6. **Commit your changes:**
-   ```bash
-   git add .
-   git commit -m "Add [Language] translation"
-   ```
-7. **Push to your fork:**
-   ```bash
-   git push origin add-translation-LANGUAGE
-   ```
-8. **Create a Pull Request** on GitHub
-
-### Option 2: GitHub Issue (Easier for Beginners)
-
-**If you're new to GitHub:**
-
-1. Go to [TagForge Issues](https://github.com/SiliconeShojo/TagForge/issues)
-2. Click **"New Issue"**
-3. Use this title: `Translation: [Your Language]`
-4. In the description, write:
-   ```
-   I've created a translation for [Language].
-   Language Code: XX-YY
-   Native Name: [Name]
-   
-   Please find my translation file attached.
-   ```
-5. **Attach your `.json` file** by dragging it into the comment box
-6. Submit the issue
-
-**I'll integrate it for you!**
+<br>
 
 ---
 
-## Tips for Quality Translations
+<br>
 
-### 1. Be Concise
-UI space is limited. Shorter translations are better when they convey the same meaning.
+## 📮 Step 4: Submission
 
-**Example:**
-- ❌ "Click this button to save your settings"
-- ✅ "Save Settings"
+**I** welcome contributions in whatever way is easiest for you.
 
-### 2. Match the Tone
-TagForge is professional but friendly. Avoid overly formal or overly casual language.
+### Option A: Pull Request (Recommended)
+1.  Fork the repo and create a branch: `git checkout -b lang/add-german`
+2.  Commit your JSON file (and the C# change if you did it).
+3.  Open a Pull Request.
 
-### 3. Context Matters
-Some words can mean different things. Here's how keys are organized:
+### Option B: GitHub Issue (Easy Mode)
+1.  Go to [Issues](https://github.com/SiliconeShojo/TagForge/issues/new).
+2.  Create a new issue titled **"Translation: [Language Name]"**.
+3.  **Drag and drop** your `.json` file into the description box.
+4.  Submit! **I** will add it for you.
 
-- `Settings.*` - Appears in the Settings screen
-- `Agent.*` - Related to AI agent configuration
-- `Chat.*` - Chat interface
-- `Common.*` - Buttons/actions used everywhere (Save, Cancel, Copy, etc.)
-
-### 4. Test Thoroughly
-If possible, check:
-- All tabs (Generator, Chat, Agent Config, Settings, Logs)
-- All buttons and labels
-- Error messages
-- Tooltips (hover text)
-
-### 5. Native Names
-When registering your language in `LocalizationService.cs`, use the **native name**:
-- ✅ "Français" (not "French")
-- ✅ "日本語" (not "Japanese")
-- ✅ "Español" (not "Spanish")
-
-### 6. Consistency
-If you translate "API Key" as "Clé API" once, use the same translation throughout.
-
-### 7. Ask Questions!
-Not sure about a translation? Open a [GitHub Discussion](https://github.com/SiliconeShojo/TagForge/discussions) and ask!
+<br>
 
 ---
 
-## Need Help?
+<br>
 
-- **Questions?** → [GitHub Discussions](https://github.com/SiliconeShojo/TagForge/discussions)
-- **Issues?** → [GitHub Issues](https://github.com/SiliconeShojo/TagForge/issues)
-- **General chat?** → Check the README for community links
+## 💡 Quality Tips
+
+* **Context:**
+    * `Settings.*` → Settings Menu
+    * `Agent.*` → AI Configuration
+    * `Chat.*` → Chat Interface
+* **Conciseness:** UI space is limited. Prefer short, punchy translations over literal ones (e.g., "Save" vs "Click here to save").
+* **Tone:** Professional yet helpful. Avoid slang.
+
+<br>
 
 ---
 
-## Thank You! 🎉
+> [!NOTE]
+> If you are unsure about a specific term or context, feel free to ask in [Discussions](https://github.com/SiliconeShojo/TagForge/discussions) or open a draft PR.
 
-Your contribution helps make TagForge accessible to millions of users worldwide. Every translation matters, no matter how small your language community is.
-
-**Happy translating!** 🌍✨
+**Happy Translating!** 🌍

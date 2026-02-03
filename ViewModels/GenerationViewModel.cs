@@ -12,6 +12,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 
+using Avalonia.Media.Imaging; // For Bitmap
+using System.IO;
+
 namespace TagForge.ViewModels
 {
     public partial class GenerationViewModel : ViewModelBase
@@ -20,6 +23,14 @@ namespace TagForge.ViewModels
         private readonly MainViewModel _mainViewModel;
         private readonly ProviderFactory _providerFactory;
         private readonly HistoryService _historyService;
+        
+        // Default prompt to auto-insert when attaching an image
+        private const string NaturalVisionPrompt = "Describe every aspect of this image.";
+        private const string TagVisionPrompt = "Tag every aspect of this image.";
+        private const string DefaultVisionPrompt = "Describe every aspect of this image."; // Fallback
+
+        // State to remember previous persona
+        private Persona? _previousPersona = null;
 
         [ObservableProperty]
         private string _prompt;
@@ -41,7 +52,31 @@ namespace TagForge.ViewModels
             _providerFactory = new ProviderFactory();
             _historyService = new HistoryService();
             
+            _sessionService.PropertyChanged += (s, e) => 
+            {
+                if (e.PropertyName == nameof(SessionService.ActiveProfile))
+                {
+                    CheckVisionCapabilities();
+                    // Also listen to model changes inside the profile
+                    if (_sessionService.ActiveProfile != null)
+                    {
+                        _sessionService.ActiveProfile.PropertyChanged += (ps, pe) => 
+                        {
+                            if (pe.PropertyName == nameof(AgentProfile.SelectedModel) || pe.PropertyName == nameof(AgentProfile.VisionOverride))
+                            {
+                                CheckVisionCapabilities();
+                            }
+                        };
+                    }
+                }
+                else if (e.PropertyName == nameof(SessionService.ActivePersona))
+                {
+                     HandlePersonaChanged();
+                }
+            };
+            
             LoadHistory();
+            CheckVisionCapabilities();
         }
 
         public GenerationViewModel()
@@ -62,6 +97,148 @@ namespace TagForge.ViewModels
                 _sessionService.ActivePersona = value;
                 OnPropertyChanged(nameof(SelectedPersona));
             }
+        }
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasImage))]
+        private string? _selectedImagePath;
+
+        [ObservableProperty]
+        private Bitmap? _selectedImageBitmap;
+
+        partial void OnSelectedImagePathChanged(string? value)
+        {
+            // Dispose old if needed? Avalonia Bitmaps are usually managed but good to be careful.
+            // Actually, we just replace the reference. The GC/Avalonia handles the rest mostly, 
+            // but Explicit disposal is good if we hold open file handles. 
+            // Bitmap(path) does not lock file usually? It might.
+            // Let's just load the new one.
+            
+            if (string.IsNullOrEmpty(value) || !System.IO.File.Exists(value))
+            {
+                SelectedImageBitmap = null;
+            }
+            else
+            {
+                try
+                {
+                    // Create bitmap
+                    SelectedImageBitmap = new Bitmap(value);
+                }
+                catch
+                {
+                    SelectedImageBitmap = null;
+                }
+                
+                // Trigger prompt update when image is attached/changed
+                UpdateVisionPrompt();
+            }
+        }
+
+        private void HandlePersonaChanged()
+        {
+            UpdateVisionPrompt();
+        }
+
+        private void UpdateVisionPrompt()
+        {
+            var activePersona = _sessionService.ActivePersona;
+            if (activePersona == null) return;
+            
+            // Only auto-fill if we have an image attached
+            if (!HasImage) return;
+
+            string newPrompt = null;
+
+            if (activePersona.Name.Contains("Natural Vision")) 
+            { 
+                newPrompt = NaturalVisionPrompt; 
+            }
+            else if (activePersona.Name.Contains("Tag Vision")) 
+            { 
+                newPrompt = TagVisionPrompt; 
+            }
+            else
+            {
+                // Request: Other persona: remove/clear default prompts
+                if (Prompt == NaturalVisionPrompt || Prompt == TagVisionPrompt || Prompt == DefaultVisionPrompt)
+                {
+                    Prompt = string.Empty;
+                }
+                return;
+            }
+            
+            if (!string.IsNullOrEmpty(newPrompt))
+            {
+                 // Overwrite if empty OR if it's one of the other default prompts
+                 if (string.IsNullOrWhiteSpace(Prompt) || 
+                     Prompt == NaturalVisionPrompt || 
+                     Prompt == TagVisionPrompt || 
+                     Prompt == DefaultVisionPrompt)
+                 {
+                     Prompt = newPrompt;
+                 }
+            }
+        }
+
+        public bool HasImage => !string.IsNullOrEmpty(SelectedImagePath);
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(VisionToolTipText))]
+        private bool _isVisionEnabled;
+        
+        public string VisionToolTipText => IsVisionEnabled 
+            ? LocalizationService.Instance["Vision.Attach"]
+            : (_sessionService.ActiveProfile?.VisionOverride == true 
+                ? LocalizationService.Instance["Vision.Override"]
+                : string.Format(LocalizationService.Instance["Vision.NotSupported"], _sessionService.ActiveProfile?.SelectedModel ?? "Unknown"));
+
+        [RelayCommand]
+        private async Task AttachImage()
+        {
+             if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+             {
+                 var window = desktop.MainWindow;
+                 if (window == null) return;
+                 
+                 var options = new Avalonia.Platform.Storage.FilePickerOpenOptions
+                 {
+                     Title = "Select Image for Analysis",
+                     AllowMultiple = false,
+                     FileTypeFilter = new[] { Avalonia.Platform.Storage.FilePickerFileTypes.ImageAll }
+                 };
+                 
+                 var result = await window.StorageProvider.OpenFilePickerAsync(options);
+                 if (result != null && result.Count > 0)
+                 {
+                     var file = result[0];
+                     if (file != null)
+                     {
+                         SelectedImagePath = file.Path.LocalPath;
+                     }
+                 }
+             }
+        }
+
+
+
+        public void CheckVisionCapabilities()
+        {
+             if (_sessionService.ActiveProfile == null) 
+             {
+                 IsVisionEnabled = false;
+                 return;
+             }
+             
+             // Check Override first (Layer 2)
+             if (_sessionService.ActiveProfile.VisionOverride)
+             {
+                 IsVisionEnabled = true;
+                 return;
+             }
+
+             // Check Keywords (Layer 3)
+             IsVisionEnabled = ModelCapabilities.SupportsVision(_sessionService.ActiveProfile.SelectedModel, _sessionService.ActiveProfile.Provider);
         }
         
         private async void LoadHistory()
@@ -88,6 +265,22 @@ namespace TagForge.ViewModels
             // Set as current session
             CurrentSession = newSession;
             Messages.Clear(); // Start empty
+            
+            // Clear image and prompt
+            Prompt = string.Empty;
+            RemoveImage();
+        }
+
+        [RelayCommand]
+        private void RemoveImage()
+        {
+            SelectedImagePath = null;
+            
+            // Clear prompt if it was a default vision prompt
+            if (Prompt == NaturalVisionPrompt || Prompt == TagVisionPrompt || Prompt == DefaultVisionPrompt)
+            {
+               Prompt = string.Empty;
+            }
         }
 
         private async Task PerformSaveHistory()
@@ -148,10 +341,15 @@ namespace TagForge.ViewModels
 
             // User Message (VISIBLE - Requested Feature)
             string currentPrompt = Prompt;
-            var userMsg = new ChatMessage("User", currentPrompt);
+            string? currentImagePath = SelectedImagePath; // Capture locally
+            var userMsg = new ChatMessage("User", currentPrompt, imagePath: currentImagePath);
             Messages.Add(userMsg);
 
             Prompt = string.Empty;
+            // Retain image until explicitly cleared or just clear it? 
+            // Usually chat inputs clear after sending.
+            SelectedImagePath = null; 
+            
             IsGenerating = true;
             _cts = new System.Threading.CancellationTokenSource();
             
@@ -227,8 +425,22 @@ namespace TagForge.ViewModels
                         }
                     });
                     
+                    // Log Request
+                    _sessionService.Log($"Generating with Model: {profile.SelectedModel} (Vision: {currentImagePath != null})", LogLevel.Info);
+                    
                     // Producer Loop: Fetches from Network
-                    await foreach (var token in provider.GenerateStreamingAsync(finalSystemMessage, currentPrompt, profile.SelectedModel, profile.ApiKey, profile.EndpointUrl, _cts.Token))
+                    Action<string, string, bool> debugger = (title, msg, isSuccess) => 
+                    {
+                        var level = isSuccess ? LogLevel.Success : LogLevel.Info;
+                        if (title.Contains("Request")) level = LogLevel.ApiRequest;
+                        else if (title.Contains("Response")) level = LogLevel.ApiResponse;
+                        else if (title.Contains("Error") || title.Contains("Failed")) level = LogLevel.Error;
+
+                        if (!string.IsNullOrWhiteSpace(msg))
+                            _sessionService.Log($"{title}: {msg}", level);
+                    };
+
+                    await foreach (var token in provider.GenerateStreamingAsync(finalSystemMessage, currentPrompt, profile.SelectedModel, profile.ApiKey, profile.EndpointUrl, imagePath: currentImagePath, cancellationToken: _cts.Token, logger: debugger))
                     {
                          string tempToken = token;
                          
@@ -267,8 +479,24 @@ namespace TagForge.ViewModels
                 catch (OperationCanceledException)
                 {
                     networkFinished = true; // Ensure display task finishes
-                    Dispatcher.UIThread.Invoke(() => 
-                        Messages.Add(new ChatMessage("System", "Generation Stopped", "")));
+                    
+                    // Check if IT WAS user cancelled
+                    if (_cts != null && _cts.IsCancellationRequested)
+                    {
+                        Dispatcher.UIThread.Invoke(() => 
+                        {
+                            aiMsg.Content += "\n\n[Generation Stopped]";
+                        });
+                    }
+                    else
+                    {
+                        // Unexpected Timeout
+                         _sessionService.LogError("Tag Generation", "Operation Timed Out (Server did not respond in time).");
+                         Dispatcher.UIThread.Invoke(() => 
+                         {
+                            aiMsg.Content += "\n\n[Error: Server Timeout - Check logs]";
+                         });
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -279,8 +507,17 @@ namespace TagForge.ViewModels
                     var userMessage = ParseErrorMessage(ex);
                     Dispatcher.UIThread.Invoke(() =>
                     {
+                         // Sanitize user message
+                        aiMsg.IsError = true;
+                        aiMsg.Content += $"\n\n{userMessage}";
+                    });
+                }
+                finally
+                {
+                    // GUARANTEED CLEANUP
+                    networkFinished = true;
+                    Dispatcher.UIThread.Invoke(() => {
                         aiMsg.IsThinking = false;
-                        aiMsg.Content = $"Generation Failed\n\n{userMessage}";
                     });
                 }
             });
@@ -350,7 +587,7 @@ namespace TagForge.ViewModels
                     return trimmed;
             }
             
-            return "An error occurred. Check the Logs tab for details.";
+            return "An error occurred.";
         }
 
         private System.Threading.CancellationTokenSource? _cts;

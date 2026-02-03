@@ -216,25 +216,25 @@
                    VerticalAlignment="Center"
                    Spacing="15">
             <TextBlock Text="📂" FontSize="48" HorizontalAlignment="Center" Opacity="0.3"/>
-            <TextBlock Text="No History Found" 
+            <TextBlock Text="{text:Localize History.NoHistory}" 
                        FontSize="20" 
                        FontWeight="SemiBold" 
                        Foreground="#E0E0E0" 
                        HorizontalAlignment="Center"
                        Opacity="0.7"/>
-            <TextBlock Text="Start a new chat or generate tags to see them here." 
+            <TextBlock Text="{text:Localize History.StartPrompt}" 
                        FontSize="13" 
                        Foreground="#E0E0E0" 
                        HorizontalAlignment="Center"
                        Opacity="0.5"/>
             <StackPanel Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center" Margin="0,15,0,0">
-                <Button Content="New Chat"
+                <Button Content="{text:Localize History.NewChat}"
                         Command="{Binding CreateNewChatSessionCommand}"
                         Padding="20,10"
                         Background="#6B8AFF"
                         Foreground="White"
                         CornerRadius="20"/>
-                <Button Content="New Tag"
+                <Button Content="{text:Localize History.NewTag}"
                         Command="{Binding CreateNewTagSessionCommand}"
                         Padding="20,10"
                         Background="#4CAF50"

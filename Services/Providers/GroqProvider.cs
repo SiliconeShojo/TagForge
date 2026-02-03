@@ -14,8 +14,9 @@ namespace TagForge.Services.Providers
         private const string DefaultBaseUrl = "https://api.groq.com/openai/v1/chat/completions";
         private const string ModelsUrl = "https://api.groq.com/openai/v1/models";
 
-        public async Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        public async Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
+            logger?.Invoke("Ping Request", $"GET {ModelsUrl}", false);
             using var client = new RestClient(ModelsUrl);
             var request = new RestRequest("", Method.Get);
             request.AddHeader("Authorization", $"Bearer {apiKey}");
@@ -24,6 +25,7 @@ namespace TagForge.Services.Providers
             
             if (!response.IsSuccessful)
             {
+                logger?.Invoke("Ping Failed", $"HTTP {(int)response.StatusCode}\n{response.Content}", true);
                 string errorMessage = "Unknown error";
                 try
                 {
@@ -39,10 +41,11 @@ namespace TagForge.Services.Providers
                 throw new Exception(errorMsg);
             }
             
+            logger?.Invoke("Ping Success", "Connection verified.", true);
             return true;
         }
 
-        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, string? imagePath = null, System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
             var targetUrl = string.IsNullOrEmpty(baseUrl) ? DefaultBaseUrl : baseUrl;
             using var client = new RestClient(targetUrl);
@@ -55,7 +58,30 @@ namespace TagForge.Services.Providers
             {
                 messages.Add(new { role = "system", content = systemPrompt });
             }
-            messages.Add(new { role = "user", content = userPrompt });
+
+            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            {
+                // Groq Llama 3.2 Vision uses standard OpenAI image_url format
+                byte[] imageBytes = await File.ReadAllBytesAsync(imagePath, cancellationToken);
+                string base64Image = Convert.ToBase64String(imageBytes);
+                string mimeType = "image/jpeg";
+                if (imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) mimeType = "image/png";
+                if (imagePath.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)) mimeType = "image/webp";
+
+                messages.Add(new 
+                { 
+                    role = "user", 
+                    content = new object[] 
+                    {
+                        new { type = "text", text = userPrompt },
+                        new { type = "image_url", image_url = new { url = $"data:{mimeType};base64,{base64Image}" } }
+                    }
+                });
+            }
+            else
+            {
+                messages.Add(new { role = "user", content = userPrompt });
+            }
 
             var payload = new
             {
@@ -63,9 +89,18 @@ namespace TagForge.Services.Providers
                 messages = messages
             };
 
+            var jsonBody = JsonConvert.SerializeObject(payload);
             request.AddJsonBody(payload);
 
+            if (jsonBody.Length > 2000 && jsonBody.Contains("image_url"))
+                logger?.Invoke("Generate Request", $"POST {targetUrl}\n{jsonBody.Substring(0, 500)} ... [IMAGE DATA] ...", false);
+            else
+                logger?.Invoke("Generate Request", $"POST {targetUrl}\n{jsonBody}", false);
+
             var response = await client.ExecuteAsync(request, cancellationToken);
+            
+            logger?.Invoke("Generate Response", $"HTTP {(int)response.StatusCode}\n{response.Content}", true);
+
             if (!response.IsSuccessful)
             {
                 throw new Exception($"Groq API Error: {response.Content}");
@@ -76,13 +111,18 @@ namespace TagForge.Services.Providers
             return text ?? string.Empty;
         }
 
-        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default)
+        public async Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
+            logger?.Invoke("Fetch Models Request", $"GET {ModelsUrl}", false);
+
             using var client = new RestClient(ModelsUrl);
             var request = new RestRequest("", Method.Get);
             request.AddHeader("Authorization", $"Bearer {apiKey}");
 
             var response = await client.ExecuteAsync(request, cancellationToken);
+            
+            logger?.Invoke("Fetch Models Response", $"HTTP {(int)response.StatusCode}\n{response.Content}", true);
+
             var models = new List<string>();
 
             if (response.IsSuccessful)
@@ -110,7 +150,7 @@ namespace TagForge.Services.Providers
             return models;
         }
 
-        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<string> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, string? imagePath = null, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default, Action<string, string, bool>? logger = null)
         {
             var targetUrl = string.IsNullOrEmpty(baseUrl) ? DefaultBaseUrl : baseUrl;
             using var client = new HttpClient();
@@ -121,7 +161,29 @@ namespace TagForge.Services.Providers
             {
                 messages.Add(new { role = "system", content = systemPrompt });
             }
-            messages.Add(new { role = "user", content = userPrompt });
+            
+            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            {
+                byte[] imageBytes = await File.ReadAllBytesAsync(imagePath, cancellationToken);
+                string base64Image = Convert.ToBase64String(imageBytes);
+                string mimeType = "image/jpeg";
+                if (imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) mimeType = "image/png";
+                if (imagePath.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)) mimeType = "image/webp";
+
+                messages.Add(new 
+                { 
+                    role = "user", 
+                    content = new object[] 
+                    {
+                        new { type = "text", text = userPrompt },
+                        new { type = "image_url", image_url = new { url = $"data:{mimeType};base64,{base64Image}" } }
+                    }
+                });
+            }
+            else
+            {
+                messages.Add(new { role = "user", content = userPrompt });
+            }
 
             var payload = new
             {
@@ -130,18 +192,27 @@ namespace TagForge.Services.Providers
                 stream = true
             };
 
+            var jsonBody = JsonConvert.SerializeObject(payload);
+            if (jsonBody.Length > 2000 && jsonBody.Contains("image_url"))
+                logger?.Invoke("Stream Request", $"POST {targetUrl}\n{jsonBody.Substring(0, 1000)} ... [IMAGE DATA] ...", false);
+            else
+                logger?.Invoke("Stream Request", $"POST {targetUrl}\n{jsonBody}", false);
+
             var request = new HttpRequestMessage(HttpMethod.Post, targetUrl);
-            request.Content = new StringContent(JsonConvert.SerializeObject(payload), System.Text.Encoding.UTF8, "application/json");
+            request.Content = new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
 
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 var err = await response.Content.ReadAsStringAsync();
+                logger?.Invoke("Stream Failed", $"HTTP {(int)response.StatusCode}\n{err}", true);
                 throw new Exception($"Groq API Error: {err}");
             }
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream);
+            
+            logger?.Invoke("Stream Started", "HTTP 200 OK - Streaming...", true);
 
             while (!reader.EndOfStream)
             {
@@ -166,6 +237,7 @@ namespace TagForge.Services.Providers
                     if (!string.IsNullOrEmpty(content)) yield return content;
                 }
             }
+            logger?.Invoke("Stream Completed", "Stream finished successfully.", true);
         }
         public Task LoadModelAsync(string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default) => Task.CompletedTask;
     }

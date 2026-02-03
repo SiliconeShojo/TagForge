@@ -80,7 +80,7 @@ namespace TagForge.ViewModels
             IsDirty = true;
         }
 
-        private bool CanDeletePersona() => SelectedPersonaToEdit != null;
+        private bool CanDeletePersona() => SelectedPersonaToEdit != null && !SelectedPersonaToEdit.IsReadOnly;
 
         [RelayCommand]
         private void SavePersonas()
@@ -89,7 +89,7 @@ namespace TagForge.ViewModels
             var list = new List<PersonaModel>();
             foreach (var p in Personas)
             {
-                list.Add(new PersonaModel { Name = p.Name, SystemPrompt = p.SystemPrompt });
+                list.Add(new PersonaModel { Name = p.Name, SystemPrompt = p.SystemPrompt, IsReadOnly = p.IsReadOnly });
             }
             _settingsService.CurrentSettings.SavedPersonas = list;
             _settingsService.SaveSettings();
@@ -108,7 +108,7 @@ namespace TagForge.ViewModels
         [RelayCommand(CanExecute = nameof(CanDeletePersona))]
         private void DeletePersona()
         {
-            if (SelectedPersonaToEdit != null)
+            if (SelectedPersonaToEdit != null && !SelectedPersonaToEdit.IsReadOnly)
             {
                 Personas.Remove(SelectedPersonaToEdit);
                 SavePersonas(); // Deleting auto-saves for safety

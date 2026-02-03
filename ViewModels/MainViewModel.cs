@@ -78,7 +78,8 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _isUpdateModalVisible;
     [ObservableProperty] private string _updateVersion;
     [ObservableProperty] private string _updateChangelog;
-    private string _updateDownloadUrl;
+    private string? _updateDownloadUrl;
+    private string? _updateReleaseUrl;
 
     public MainViewModel()
     {
@@ -152,12 +153,12 @@ public partial class MainViewModel : ViewModelBase
          // 2. Check Model Selection
          if (string.IsNullOrEmpty(ActiveModelDisplay) || ActiveModelDisplay == "None")
          {
-              StatusText = "Select Model";
+              StatusText = LocalizationService.Instance["Status.SelectModel"];
               StatusColor = "#FF9800"; // Orange
          }
          else
          {
-              StatusText = "Ready";
+              StatusText = LocalizationService.Instance["Status.Ready"];
               StatusColor = "#4CAF50"; // Green
          }
     }
@@ -169,31 +170,49 @@ public partial class MainViewModel : ViewModelBase
          var info = await _updateService.CheckForUpdatesAsync();
          if (info != null)
          {
-              UpdateVersion = info.Version;
+              UpdateVersion = string.Format(LocalizationService.Instance["Update.Version"], info.Version);
               UpdateChangelog = info.Changelog ?? "No changelog provided.";
               _updateDownloadUrl = info.DownloadUrl;
+              _updateReleaseUrl = info.ReleaseUrl;
               IsUpdateModalVisible = true;
          } 
          else if (manual)
          {
-              ShowNotification("No updates available.");
+              ShowNotification(LocalizationService.Instance["Notification.NoUpdates"]);
          }
     }
 
     [RelayCommand]
     private async Task PerformUpdate()
     {
-         if (_updateDownloadUrl == null) return;
-         ShowNotification("Downloading update...", false);
+         ShowNotification(LocalizationService.Instance["Notification.UpdateDownloading"], false);
          IsUpdateModalVisible = false;
          
-         try 
+         // Check Platform
+         bool isWindows = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
+
+         if (isWindows && !string.IsNullOrEmpty(_updateDownloadUrl))
          {
-             await _updateService.PerformUpdateAsync(_updateDownloadUrl);
-         } 
-         catch(Exception ex) 
+             try 
+             {
+                 await _updateService.PerformUpdateAsync(_updateDownloadUrl);
+             } 
+             catch(Exception ex) 
+             {
+                 ShowNotification(string.Format(LocalizationService.Instance["Notification.UpdateFailed"], ex.Message), true);
+             }
+         }
+         else
          {
-             ShowNotification($"Update failed: {ex.Message}", true);
+             // Non-Windows or no direct download: Open Browser
+             if (!string.IsNullOrEmpty(_updateReleaseUrl))
+             {
+                 try 
+                 {
+                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_updateReleaseUrl) { UseShellExecute = true });
+                 }
+                 catch { }
+             }
          }
     }
 
@@ -220,7 +239,7 @@ public partial class MainViewModel : ViewModelBase
         NetworkInstance = new AgentManagerViewModel(_sessionService, _settingsService, this);
         HistoryInstance = new HistoryViewModel(this);
         SystemInstance = new SettingsViewModel(_settingsService, _sessionService);
-        LogInstance = new LogViewModel(_sessionService);
+        LogInstance = new LogViewModel(_sessionService, this);
 
         Items.Add(new ListItemTemplate(typeof(GenerationViewModel), "Nav.TagGenerator", "M5.5,7A1.5,1.5 0 0,1 4,5.5A1.5,1.5 0 0,1 5.5,4A1.5,1.5 0 0,1 7,5.5A1.5,1.5 0 0,1 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.9,2 2,2.9 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.45 21.77,11.94 21.41,11.58Z", GenInstance));
         Items.Add(new ListItemTemplate(typeof(ChatViewModel), "Nav.Chat", "M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H6L4,18V4H20Z", ChatInstance));
@@ -308,7 +327,7 @@ public partial class MainViewModel : ViewModelBase
              }
              
              // Use Warning for background pings to differentiate from explicit user tests
-             _sessionService.Log($"Background Ping Failed: {errorDetails}", TagForge.Services.LogLevel.Warning);
+             _sessionService.Log($"Background Ping Failed: {errorDetails}", LogLevel.Warning);
          }
     }
 

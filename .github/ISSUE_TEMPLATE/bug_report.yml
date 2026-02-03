@@ -1,0 +1,30 @@
+name: 🐛 Bug Report
+description: Report a problem or error.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Found a bug?**
+        Please describe the issue below.
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Windows
+        - Linux
+        - macOS
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Explain what happened.
+      placeholder: "I clicked 'Generate' and it froze..."
+    validations:
+      required: true

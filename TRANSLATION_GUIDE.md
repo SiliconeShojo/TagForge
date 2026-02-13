@@ -35,7 +35,7 @@ You need the master file: `Assets/Localization/en-US.json`.
 * **Option A (Browser):** [Click here](https://github.com/SiliconeShojo/TagForge/blob/main/Assets/Localization/en-US.json), click **Raw**, and save it (CTRL+S).
 * **Option B (Git):**
     ```bash
-    git clone [https://github.com/SiliconeShojo/TagForge.git](https://github.com/SiliconeShojo/TagForge.git)
+    git clone https://github.com/SiliconeShojo/TagForge.git
     cd TagForge/Assets/Localization
     ```
 

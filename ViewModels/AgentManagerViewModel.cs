@@ -25,7 +25,6 @@ namespace TagForge.ViewModels
             "Groq",
             "OpenRouter",
             "Hugging Face",
-
             "LM Studio",
             "Ollama"
         };

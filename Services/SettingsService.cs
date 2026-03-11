@@ -61,14 +61,6 @@ namespace TagForge.Services
                     {
                          // App Directory Base
                          var baseDir = AppContext.BaseDirectory;
-                         // Check root or potential subfolder if deployed structure differs, but typically root for these artifacts
-                         // If running from IDE, might be project root. Let's try relative path assuming execution from bin.
-                         // But source files are in e:/AntiGravity/TagForge/.
-                         // For now, I'll use the hardcoded text content from the files I viewed earlier as a robust fallback 
-                         // and try to read from AppDomain base if present, or just embed them here to be safe and consistent.
-                         // User requested "add these as default: Natural Prompts... .md files".
-                         // I will embed the content of those files directly here to ensure they are always available 
-                         // even if the .md files are not copied to the output directory.
                          return fallback;
                     }
                     catch { return fallback; }

@@ -1,0 +1,30 @@
+name: ✨ Feature Request
+description: Suggest a new idea.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Have an idea?**
+        I'd love to hear it! Please describe your suggestion below.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - 🎨 UI / UX
+        - 🧠 AI & Functionality
+        - ⚙️ System & Performance
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: What should this feature do?
+      placeholder: "I would like to be able to..."
+    validations:
+      required: true

@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TagForge.ViewModels"
+             xmlns:ext="using:TagForge.Extensions"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:DataType="vm:LogViewModel"
+             x:Class="TagForge.Views.LogView">
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header -->
+        <Grid ColumnDefinitions="*, Auto, Auto" Margin="20">
+            <StackPanel Spacing="5">
+                <TextBlock Text="{ext:Localize Logs.Title}" FontSize="24" FontWeight="Bold"/>
+                <TextBlock Text="{ext:Localize Logs.Description}" Foreground="#888"/>
+            </StackPanel>
+            <Button Grid.Column="1" Content="Export" Command="{Binding ExportLogsCommand}" Margin="0,0,10,0"/>
+            <Button Grid.Column="2" Content="{ext:Localize Logs.Clear}" Command="{Binding ClearLogsCommand}"/>
+        </Grid>
+        
+        <!-- Log List -->
+        <Border Grid.Row="1" Background="#111" Margin="20,0,20,20" CornerRadius="8" BorderBrush="#333" BorderThickness="1">
+            <ListBox ItemsSource="{Binding Logs}" Background="Transparent">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="8,4" Margin="0,2" Background="#1A1A1A" CornerRadius="4">
+                            <StackPanel>
+                                <Grid ColumnDefinitions="70, 70, *, Auto">
+                                    <TextBlock Grid.Column="0" Text="{Binding Timestamp}" 
+                                              Foreground="#666" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Level}" 
+                                              Foreground="{Binding Color}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                                    
+                                    <!-- Message (Click to toggle) -->
+                                    <Button Grid.Column="2" Background="Transparent" BorderThickness="0" 
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                            Command="{Binding $parent[UserControl].DataContext.ToggleExpandCommand, FallbackValue={x:Null}}"
+                                            CommandParameter="{Binding}">
+                                            <!-- Note: Direct binding to IsExpanded via ToggleButton or behavior is better, 
+                                                 but for simplicity using a ToggleButton in template or just binding visibility. 
+                                                 Actually, let's just make the text toggle it if we had a command or use Expander.
+                                                 
+                                                 Let's use an Expander-like layout manually for better control.
+                                            -->
+                                        <TextBlock Text="{Binding Message}" Foreground="#EEE" TextTrimming="CharacterEllipsis" 
+                                                   FontFamily="Consolas" FontSize="12"/>
+                                    </Button>
+                                    
+                                    <!-- Copy Button -->
+                                    <Button Grid.Column="3" Padding="4" Background="Transparent" BorderThickness="0"
+                                            Command="{Binding $parent[UserControl].DataContext.CopyLogCommand}"
+                                            CommandParameter="{Binding}">
+                                        <PathIcon Data="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" 
+                                                  Width="12" Height="12" Foreground="#888"/>
+                                    </Button>
+                                </Grid>
+                                
+                                <!-- Details (Collapsible) -->
+                                <Border Background="#111" Margin="30,4,0,0" Padding="8" CornerRadius="4"
+                                        IsVisible="{Binding IsExpanded}">
+                                    <SelectableTextBlock Text="{Binding Details}" FontFamily="Consolas" FontSize="11" 
+                                                        Foreground="#AAA" TextWrapping="Wrap"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+                <ListBox.Styles>
+                   <Style Selector="ListBoxItem">
+                       <Setter Property="Padding" Value="4"/>
+                       <Setter Property="Margin" Value="0,0,0,4"/>
+                   </Style>
+                   <!-- Selected: Transparent (No Blue) -->
+                   <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                       <Setter Property="Background" Value="Transparent"/>
+                   </Style>
+                   
+                   <!-- Hover: Subtle Grey -->
+                   <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                       <Setter Property="Background" Value="#252525"/>
+                   </Style>
+                   
+                   <!-- Selected + Hover: Same as Hover -->
+                   <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter">
+                       <Setter Property="Background" Value="#252525"/>
+                   </Style>
+                   
+                   <!-- Focused: Transparent -->
+                   <Style Selector="ListBoxItem:selected:focus /template/ ContentPresenter">
+                       <Setter Property="Background" Value="Transparent"/>
+                   </Style>
+                </ListBox.Styles>
+            </ListBox>
+        </Border>
+    </Grid>
+</UserControl>

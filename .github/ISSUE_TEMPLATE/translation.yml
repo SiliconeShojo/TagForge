@@ -1,0 +1,35 @@
+name: 🌍 Translation Contribution
+description: Submit a new language or fix an existing translation.
+title: "[Translation]: "
+labels: ["localization", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping TagForge speak more languages!
+        Please read the [Translation Guide](https://github.com/SiliconeShojo/TagForge/blob/main/TRANSLATION_GUIDE.md) before submitting.
+
+  - type: input
+    id: language
+    attributes:
+      label: Target Language
+      description: Which language is this for? (e.g., German, Portuguese)
+      placeholder: "German (de-DE)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Contribution Type
+      options:
+        - ✨ New Language Support
+        - 🛠️ Fix / Improvement to Existing Language
+
+  - type: textarea
+    id: file_attachment
+    attributes:
+      label: Attach File
+      description: Please attach your file here.
+    validations:
+      required: true

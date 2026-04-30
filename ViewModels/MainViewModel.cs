@@ -1,0 +1,433 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System;
+using System.Collections.ObjectModel;
+using Avalonia.Controls;
+using TagForge.Models;
+using TagForge.Services;
+using Avalonia.Threading;
+using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Linq;
+
+namespace TagForge.ViewModels;
+
+public partial class MainViewModel : ViewModelBase
+{
+    [ObservableProperty]
+    private ViewModelBase _currentPage = null!;
+    
+    [ObservableProperty]
+    private bool _isGeneratorVisible;
+    [ObservableProperty]
+    private bool _isChatVisible;
+    [ObservableProperty]
+    private bool _isNetworkVisible;
+    [ObservableProperty]
+    private bool _isSystemVisible;
+    [ObservableProperty]
+    private bool _isLogVisible;
+    [ObservableProperty]
+    private bool _isHistoryVisible;
+
+    [ObservableProperty]
+    private bool _isPaneOpen = true;
+
+    private ListItemTemplate? _selectedListItem;
+    public ListItemTemplate? SelectedListItem
+    {
+        get => _selectedListItem;
+        set
+        {
+            // Intercept navigation if Settings is Dirty
+            if (CurrentPage is SettingsViewModel settingsVM && settingsVM.IsDirty && value != _selectedListItem)
+            {
+                ShowNotification("You have unsaved persona changes! Please save or revert them.", true);
+                // Force UI re-binding to notify that the property didn't change (to reset tab selection visually if needed)
+                OnPropertyChanged(nameof(SelectedListItem)); 
+                return;
+            }
+
+            if (SetProperty(ref _selectedListItem, value))
+            {
+                UpdateCurrentView(value);
+            }
+        }
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<Notification> _notifications = new();
+
+    public ObservableCollection<ListItemTemplate> Items { get; } = new();
+
+    private readonly SessionService _sessionService;
+    private readonly SettingsService _settingsService;
+    private readonly ISecurityService _securityService;
+    
+    // Status Bar Binding
+    public string ActiveModelDisplay => _sessionService.ActiveProfile?.SelectedModel ?? "None";
+    public string ActiveProviderDisplay => _sessionService.ActiveProfile?.Provider ?? "Unknown";
+    [ObservableProperty]
+    private string _latencyDisplay = "0ms";
+    [ObservableProperty]
+    private string _latencyColor = "#4CAF50"; // Default Green
+
+    
+    private DispatcherTimer _pingTimer;
+
+    private readonly UpdateService _updateService = new();
+
+    [ObservableProperty] private bool _isUpdateModalVisible;
+    [ObservableProperty] private string _updateVersion = string.Empty;
+    [ObservableProperty] private string _updateChangelog = string.Empty;
+    [ObservableProperty] private float _updateProgress;
+    [ObservableProperty] private bool _isDownloadingUpdate;
+    private string? _updateDownloadUrl;
+    private string? _updateReleaseUrl;
+
+    public MainViewModel()
+    {
+        _settingsService = new SettingsService();
+        _sessionService = new SessionService(_settingsService);
+        _securityService = new SecurityService();
+
+        _pingTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _pingTimer.Tick += async (s, e) => await PingEndpoint();
+        _pingTimer.Start();
+        
+
+        InitializeItems();
+        
+        // Listen to profile changes to update status bar
+        _sessionService.PropertyChanged += (s, e) => {
+             if (e.PropertyName == nameof(SessionService.ActiveProfile))
+             {
+                 OnPropertyChanged(nameof(ActiveModelDisplay));
+                 OnPropertyChanged(nameof(ActiveProviderDisplay));
+                 UpdateConnectionStatus();
+                 
+                 if (_sessionService.ActiveProfile != null)
+                 {
+                     _sessionService.ActiveProfile.PropertyChanged += (s2, e2) => {
+                         if (e2.PropertyName == nameof(AgentProfile.SelectedModel))
+                         {
+                             OnPropertyChanged(nameof(ActiveModelDisplay));
+                             UpdateConnectionStatus(); // Check on model change
+                         }
+                     };
+                 }
+             }
+             if (e.PropertyName == nameof(SessionService.LastLatency))
+             {
+                 UpdateConnectionStatus();
+             }
+        };
+        
+        // Auto-Check Updates
+        if (_settingsService.CurrentSettings.AutoCheckForUpdates)
+        {
+             _ = CheckUpdatesAsync(false);
+        }
+
+        // Initial Check
+        UpdateConnectionStatus();
+    }
+
+    [ObservableProperty] private string _statusText = "Initializing...";
+    [ObservableProperty] private string _statusColor = "#777777";
+
+    public async Task InitializeAsync()
+    {
+        // Set the default view lazily
+        if (Items.Count > 0) 
+        {
+            SelectedListItem = Items[0];
+        }
+        await Task.CompletedTask;
+    }
+
+    private void UpdateConnectionStatus()
+    {
+         // 1. Check Latency / Offline
+         if (_sessionService.LastLatency <= 0)
+         {
+              StatusText = "Offline";
+              StatusColor = "#777777"; // Grey
+              LatencyDisplay = "Offline";
+              LatencyColor = "#777777";
+              return;
+         }
+
+         // Latency Updates
+         LatencyDisplay = $"{_sessionService.LastLatency}ms";
+         if (_sessionService.LastLatency < 300) LatencyColor = "#4CAF50"; 
+         else if (_sessionService.LastLatency < 1000) LatencyColor = "#FF9800"; 
+         else LatencyColor = "#F44336"; 
+
+         // 2. Check Model Selection
+         if (string.IsNullOrEmpty(ActiveModelDisplay) || ActiveModelDisplay == "None")
+         {
+              StatusText = LocalizationService.Instance["Status.SelectModel"];
+              StatusColor = "#FF9800"; // Orange
+         }
+         else
+         {
+              StatusText = LocalizationService.Instance["Status.Ready"];
+              StatusColor = "#4CAF50"; // Green
+         }
+    }
+
+
+
+    public async Task CheckUpdatesAsync(bool manual)
+    {
+         var info = await _updateService.CheckForUpdatesAsync();
+         if (info != null)
+         {
+              UpdateVersion = string.Format(LocalizationService.Instance["Update.Version"], info.Version);
+              UpdateChangelog = info.Changelog ?? "No changelog provided.";
+              _updateDownloadUrl = info.DownloadUrl;
+              _updateReleaseUrl = info.ReleaseUrl;
+              IsUpdateModalVisible = true;
+         } 
+         else if (manual)
+         {
+              ShowNotification(LocalizationService.Instance["Notification.NoUpdates"]);
+         }
+    }
+
+    [RelayCommand]
+    private async Task PerformUpdate()
+    {
+        if (string.IsNullOrEmpty(_updateDownloadUrl))
+        {
+            // Fallback: Open Browser
+            if (!string.IsNullOrEmpty(_updateReleaseUrl))
+            {
+                try 
+                {
+                    Process.Start(new ProcessStartInfo(_updateReleaseUrl) { UseShellExecute = true });
+                }
+                catch { }
+            }
+            IsUpdateModalVisible = false;
+            return;
+        }
+
+        IsDownloadingUpdate = true;
+        UpdateProgress = 0;
+
+        try 
+        {
+            var progress = new Progress<float>(p => UpdateProgress = p);
+            await _updateService.PerformUpdateAsync(_updateDownloadUrl, progress);
+        } 
+        catch(Exception ex) 
+        {
+            IsDownloadingUpdate = false;
+            ShowNotification(string.Format(LocalizationService.Instance["Notification.UpdateFailed"], ex.Message), true);
+        }
+    }
+
+    [RelayCommand]
+    private void DismissUpdate()
+    {
+        IsUpdateModalVisible = false;
+    }
+
+    public GenerationViewModel GenInstance => (GenerationViewModel)Items.First(i => i.ModelType == typeof(GenerationViewModel)).Instance!;
+    public ChatViewModel ChatInstance => (ChatViewModel)Items.First(i => i.ModelType == typeof(ChatViewModel)).Instance!;
+    public AgentManagerViewModel NetworkInstance => (AgentManagerViewModel)Items.First(i => i.ModelType == typeof(AgentManagerViewModel)).Instance!;
+    public HistoryViewModel HistoryInstance => (HistoryViewModel)Items.First(i => i.ModelType == typeof(HistoryViewModel)).Instance!;
+    public SettingsViewModel SystemInstance => (SettingsViewModel)Items.First(i => i.ModelType == typeof(SettingsViewModel)).Instance!;
+    public LogViewModel LogInstance => (LogViewModel)Items.First(i => i.ModelType == typeof(LogViewModel)).Instance!;
+    
+
+
+    private void InitializeItems()
+    {
+        Items.Add(new ListItemTemplate(typeof(GenerationViewModel), "Nav.TagGenerator", "M5.5,7A1.5,1.5 0 0,1 4,5.5A1.5,1.5 0 0,1 5.5,4A1.5,1.5 0 0,1 7,5.5A1.5,1.5 0 0,1 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.9,2 2,2.9 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.45 21.77,11.94 21.41,11.58Z", () => new GenerationViewModel(_sessionService, this)));
+        Items.Add(new ListItemTemplate(typeof(ChatViewModel), "Nav.Chat", "M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H6L4,18V4H20Z", () => new ChatViewModel(_sessionService, this)));
+        Items.Add(new ListItemTemplate(typeof(HistoryViewModel), "Nav.History", "M13,3A9,9 0 0,0 4,12H1L4.89,15.89L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.2 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3M12,8V13L16.28,15.54L17,14.33L13.5,12.25V8H12Z", () => new HistoryViewModel(this)));
+        Items.Add(new ListItemTemplate(typeof(AgentManagerViewModel), "Nav.AgentConfig", "M12,18A6,6 0 0,1 6,12C6,8.69 8.69,6 12,6C15.31,6 18,8.69 18,12A6,6 0 0,1 12,18M12,4C7.58,4 4,7.58 4,12C4,16.42 7.58,20 12,20C16.42,20 20,16.42 20,12C20,7.58 16.42,4 12,4Z", () => new AgentManagerViewModel(_sessionService, _settingsService, this, _securityService)));
+        Items.Add(new ListItemTemplate(typeof(SettingsViewModel), "Nav.System", "M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.04 4.95,18.95L7.44,17.95C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.95L19.05,18.95C19.27,19.04 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z", () => new SettingsViewModel(_settingsService, _sessionService, this)));
+        Items.Add(new ListItemTemplate(typeof(LogViewModel), "Nav.Logs", "M14,12H15.5V14.82L17.94,16.23L17.19,17.53L14,15.69V12M4,2H18A2,2 0 0,1 20,4V16A2,2 0 0,1 18,18H6L2,22V4A2,2 0 0,1 4,2M6,9H18V7H6V9M6,13H12V11H6V13M6,17H10V15H6V17Z", () => new LogViewModel(_sessionService, this)));
+    }
+
+    private void UpdateCurrentView(ListItemTemplate? value)
+    {
+        if (value is null) return;
+        
+        // Use the pre-instantiated instance if available
+        if (value.Instance is ViewModelBase vm)
+        {
+            CurrentPage = vm;
+            IsGeneratorVisible = vm is GenerationViewModel;
+            IsChatVisible = vm is ChatViewModel;
+            IsHistoryVisible = vm is HistoryViewModel;
+            IsNetworkVisible = vm is AgentManagerViewModel;
+            IsSystemVisible = vm is SettingsViewModel;
+            IsLogVisible = vm is LogViewModel;
+
+            if (vm is HistoryViewModel historyVM)
+            {
+                // Refresh sessions when entering history tab
+                _ = historyVM.LoadAllSessions();
+            }
+        }
+    }
+
+    public void ShowNotification(string message, bool isError = false)
+    {
+        var notification = new Notification(message, isError);
+        // Dispatch to UI thread just in case
+        Dispatcher.UIThread.Invoke(() => 
+        {
+            Notifications.Add(notification);
+        });
+
+        // Auto-dismiss after 3 seconds
+        DispatcherTimer.RunOnce(() =>
+        {
+            Notifications.Remove(notification);
+        }, TimeSpan.FromSeconds(3));
+    }
+
+    [RelayCommand]
+    private void TriggerPane()
+    {
+        IsPaneOpen = !IsPaneOpen;
+    }
+
+    private async Task PingEndpoint()
+    {
+         var profile = _sessionService.ActiveProfile;
+         if (profile == null) return;
+         
+         try 
+         {
+             var providerFactory = new ProviderFactory();
+             var provider = providerFactory.CreateProvider(profile.Provider);
+             if (provider != null)
+             {
+                 var sw = Stopwatch.StartNew();
+                 await provider.FetchModelsAsync(profile.ApiKey, profile.EndpointUrl);
+                 sw.Stop();
+                 _sessionService.LastLatency = sw.ElapsedMilliseconds;
+             }
+         }
+         catch (Exception ex)
+         {
+             _sessionService.LastLatency = 9999; // Indicate error
+             LatencyColor = "#F44336"; // Red
+             
+             // Log detailed error information
+             var errorDetails = $"Provider: {profile.Provider}\n" +
+                              $"Endpoint: {profile.EndpointUrl}\n" +
+                              $"Error: {ex.Message}";
+             
+             if (ex.InnerException != null)
+             {
+                 errorDetails += $"\nInner Error: {ex.InnerException.Message}";
+             }
+             
+             // Use Warning for background pings to differentiate from explicit user tests
+             _sessionService.Log($"Background Ping Failed: {errorDetails}", LogLevel.Warning);
+         }
+    }
+
+    // Session navigation methods for History tab
+    public async Task LoadChatSessionAsync(ChatSession session)
+    {
+        if (ChatInstance != null)
+        {
+            await ChatInstance.LoadSessionCommand.ExecuteAsync(session);
+            SwitchToChat();
+        }
+    }
+    
+    public async Task LoadTagSessionAsync(ChatSession session)
+    {
+        if (GenInstance != null)
+        {
+            await GenInstance.LoadSessionCommand.ExecuteAsync(session);
+            SwitchToGenerator();
+        }
+    }
+    
+    [RelayCommand]
+    public void SwitchToChat()
+    {
+        var item = System.Linq.Enumerable.FirstOrDefault(Items, i => i.ModelType == typeof(ChatViewModel));
+        if (item != null) SelectedListItem = item;
+    }
+
+    [RelayCommand]
+    public void SwitchToGenerator()
+    {
+        var item = System.Linq.Enumerable.FirstOrDefault(Items, i => i.ModelType == typeof(GenerationViewModel));
+        if (item != null) SelectedListItem = item;
+    }
+}
+
+public class Notification
+{
+    public string Message { get; }
+    public bool IsError { get; }
+    public string BackgroundColor => IsError ? "#8B0000" : "#2E7D32"; // Dark Red vs Green
+
+    public Notification(string message, bool isError)
+    {
+        Message = message;
+        IsError = isError;
+    }
+}
+
+public partial class ListItemTemplate : ObservableObject
+{
+    [ObservableProperty]
+    private string _label = string.Empty;
+    
+    public string LabelKey { get; }
+    public Type ModelType { get; }
+    public string IconData { get; }
+    public Avalonia.Media.IImage? IconBitmap { get; }
+    public bool HasCustomIcon => IconBitmap != null;
+    private object? _instance;
+    public object? Instance => _instance ??= _factory?.Invoke();
+    private readonly Func<object?>? _factory;
+
+    public ListItemTemplate(Type type, string labelKey, string iconData, Func<object?>? factory = null)
+    {
+        ModelType = type;
+        LabelKey = labelKey;
+        IconData = iconData;
+        _factory = factory;
+        
+        // Initial Translation
+        _label = LocalizationService.Instance[LabelKey];
+        
+        // Listen for changes
+        LocalizationService.Instance.LanguageChanged += () => 
+        {
+            Label = LocalizationService.Instance[LabelKey];
+        };
+
+        try 
+        {
+            // Map localization keys back to existing .png asset filenames
+            string iconName = LabelKey.Replace("Nav.", "");
+            if (iconName == "AgentConfig") iconName = "AgentConfiguration"; // Handle legacy naming mismatch
+            
+            string name = iconName + ".png";
+            var uri = new Uri($"avares://TagForge/Assets/Icons/{name}");
+            
+            if (Avalonia.Platform.AssetLoader.Exists(uri))
+            {
+                using var stream = Avalonia.Platform.AssetLoader.Open(uri);
+                IconBitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+            }
+        }
+        catch { }
+    }
+}

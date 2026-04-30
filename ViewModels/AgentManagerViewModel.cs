@@ -1,0 +1,480 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using TagForge.Services;
+using System.Linq;
+using Avalonia.Threading;
+using Avalonia.Media;
+using System;
+
+namespace TagForge.ViewModels
+{
+    public partial class AgentManagerViewModel : ViewModelBase
+    {
+        private readonly SessionService _sessionService;
+        private readonly SettingsService _settingsService;
+        private readonly MainViewModel? _mainViewModel;
+        private readonly ProviderFactory _providerFactory;
+        private readonly ISecurityService _securityService;
+
+        [ObservableProperty]
+        private ObservableCollection<string> _availableProviders = new()
+        {
+            "Google Gemini",
+
+            "OpenRouter",
+            "Hugging Face",
+            "LM Studio",
+            "Ollama"
+        };
+        
+        [ObservableProperty]
+        private string _helpText = LocalizationService.Instance["Agent.SelectProvider"];
+
+        [ObservableProperty]
+        private bool _isPasswordVisible;
+
+        [ObservableProperty]
+        private char _maskChar = '*';
+
+        public ObservableCollection<AgentProfile> Profiles => _sessionService.Profiles;
+
+        public AgentProfile SelectedProfile 
+        { 
+            get => _sessionService.ActiveProfile;
+            set 
+            {
+                _sessionService.ActiveProfile = value!;
+                OnPropertyChanged(nameof(SelectedProfile));
+                UpdateHelpText(value?.Provider);
+               
+               // Persist selection
+               if (value != null)
+               {
+                   _settingsService.CurrentSettings.LastSelectedProviderName = value.Name;
+                   _settingsService.SaveSettings();
+               }
+            }
+        }
+
+        partial void OnIsPasswordVisibleChanged(bool value)
+        {
+            MaskChar = value ? '\0' : '*';
+        }
+
+        public AgentManagerViewModel(SessionService sessionService, SettingsService settingsService, MainViewModel mainVm, ISecurityService securityService)
+        {
+            _sessionService = sessionService;
+            _settingsService = settingsService;
+            _mainViewModel = mainVm;
+            _securityService = securityService;
+            _providerFactory = new ProviderFactory();
+            
+            LoadProfiles();
+        }
+        
+        // Design-time / Fallback
+        public AgentManagerViewModel() 
+        { 
+             _settingsService = new SettingsService();
+             _sessionService = new SessionService(_settingsService);
+             _securityService = new SecurityService();
+             _providerFactory = new ProviderFactory();
+             LoadProfiles();
+        }
+
+        private void LoadProfiles()
+        {
+            if (_sessionService.Profiles.Count > 0) return;
+
+            var savedAgents = _settingsService.CurrentSettings.SavedAgents;
+
+            // Load saved agents or create defaults
+            foreach (var provider in AvailableProviders)
+            {
+                var saved = savedAgents.FirstOrDefault(a => a.Provider == provider);
+                var profile = new AgentProfile 
+                { 
+                    Name = provider, 
+                    Provider = provider,
+                    EndpointUrl = saved?.EndpointUrl ?? GetDefaultUrl(provider),
+                    ApiKey = _securityService.Decrypt(saved?.EncryptedApiKey) ?? string.Empty,
+                    SelectedModel = saved?.SelectedModel ?? string.Empty,
+
+                    HelpUrl = GetHelpUrl(provider),
+                    Description = GetProviderDescription(provider),
+
+                    IconData = GetIconGeometry(provider),
+                    VisionOverride = saved?.VisionOverride ?? false,
+                    MaxTokens = saved?.MaxTokens ?? ModelCapabilities.GetSuggestedMaxTokens(provider)
+                };
+
+                // Check for embedded icon resource
+                try 
+                {
+                    // Remove spaces for resource names (e.g. "Google Gemini" -> "GoogleGemini.png")
+                    string resourceName = provider.Replace(" ", "") + ".png";
+                    var uri = new Uri($"avares://TagForge/Assets/Icons/{resourceName}");
+                    
+                    if (Avalonia.Platform.AssetLoader.Exists(uri))
+                    {
+                        using var stream = Avalonia.Platform.AssetLoader.Open(uri);
+                        profile.IconBitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+                    }
+                }
+                catch { /* Ignore missing assets */ }
+
+                // Migration: Auto-update legacy Hugging Face URL
+                if (provider == "Hugging Face" && profile.EndpointUrl == "https://api-inference.huggingface.co/models/")
+                {
+                    profile.EndpointUrl = "https://router.huggingface.co/v1";
+                }
+                
+                // Add property change listener to auto-save and pre-load
+                profile.PropertyChanged += async (s, e) => 
+                {
+                    SaveProfiles();
+                    if (e.PropertyName == nameof(AgentProfile.SelectedModel) && !string.IsNullOrEmpty(profile.SelectedModel))
+                    {
+                        await PreloadModel(profile);
+                    }
+                };
+                
+                _sessionService.Profiles.Add(profile);
+            }
+            
+            // Restore selection
+            var lastSelected = _settingsService.CurrentSettings.LastSelectedProviderName;
+            SelectedProfile = _sessionService.Profiles.FirstOrDefault(p => p.Name == lastSelected) 
+                              ?? _sessionService.Profiles.FirstOrDefault()!;
+
+            // Auto-Connect (Phase 11)
+            if (SelectedProfile != null)
+            {
+                bool isLocal = SelectedProfile.Provider == "Ollama" || SelectedProfile.Provider == "Custom";
+                if (isLocal || !string.IsNullOrEmpty(SelectedProfile.ApiKey))
+                {
+                    _ = TestConnection();
+                }
+            }
+        }
+
+        private void SaveProfiles()
+        {
+            var configList = new List<AgentConfig>();
+            foreach (var p in _sessionService.Profiles)
+            {
+                configList.Add(new AgentConfig
+                {
+                    Name = p.Name,
+                    Provider = p.Provider,
+                    EndpointUrl = p.EndpointUrl,
+                    SelectedModel = p.SelectedModel,
+                    EncryptedApiKey = _securityService.Encrypt(p.ApiKey ?? string.Empty)!,
+                    VisionOverride = p.VisionOverride,
+                    MaxTokens = p.MaxTokens
+                });
+            }
+            _settingsService.CurrentSettings.SavedAgents = configList;
+            _settingsService.SaveSettings();
+        }
+
+
+        private string GetDefaultUrl(string provider)
+        {
+            return provider switch
+            {
+                "Google Gemini" => "https://generativelanguage.googleapis.com/v1beta/models",
+
+                "OpenRouter" => "https://openrouter.ai/api/v1/chat/completions",
+                "LM Studio" => "http://localhost:1234/v1/chat/completions",
+                "Ollama" => "http://localhost:11434/api/chat",
+
+                "Hugging Face" => "https://router.huggingface.co/v1",
+                "Custom" => "http://localhost:5000/v1/chat/completions", // Example default
+                _ => ""
+            };
+        }
+
+        private void UpdateHelpText(string? provider)
+        {
+            if (provider == null) return;
+             HelpText = provider switch
+            {
+                "Google Gemini" => "Generative AI from Google. Requires API Key.",
+
+                "Hugging Face" => "Access 100k+ models. Token required.",
+                "LM Studio" => "Connect to local LM Studio server.",
+                "Ollama" => "Run local models. No API Key required.",
+                "OpenRouter" => "Unified interface for top LLMs.",
+
+                "Custom" => "Connect to any OpenAI-compatible endpoint.",
+                _ => "Configure your agent connection."
+            };
+        }
+
+        [RelayCommand]
+        private void TogglePassword()
+        {
+            IsPasswordVisible = !IsPasswordVisible;
+        }
+
+        [RelayCommand]
+        private async Task TestConnection()
+        {
+            if (SelectedProfile == null) return;
+
+            var providerImpl = _providerFactory.CreateProvider(SelectedProfile.Provider);
+            
+            if (providerImpl == null)
+            {
+                _mainViewModel?.ShowNotification(string.Format(LocalizationService.Instance["Error.UnknownProvider"], SelectedProfile.Provider), true);
+                return;
+            }
+
+            HelpText = LocalizationService.Instance["Agent.Testing"];
+            _sessionService.IsBusy = true;
+            _sessionService.StatusMessage = LocalizationService.Instance["Status.Pinging"];
+            
+            try 
+            {
+                bool success = await providerImpl.PingAsync(SelectedProfile.ApiKey, SelectedProfile.EndpointUrl);
+                
+                if (success)
+                {
+                    HelpText = LocalizationService.Instance["Agent.Success"];
+                    _mainViewModel?.ShowNotification(LocalizationService.Instance["Notification.Verified"], false);
+                }
+                else
+                {
+                    HelpText = LocalizationService.Instance["Agent.Failed"];
+                    _mainViewModel?.ShowNotification(LocalizationService.Instance["Notification.PingFailed"], true);
+                }
+            } 
+            catch (Exception ex)
+            {
+                HelpText = LocalizationService.Instance["Agent.Failed"];
+                var errorMsg = string.Format(LocalizationService.Instance["Error.ConnectionError"], SelectedProfile.Provider, ex.Message);
+                _mainViewModel?.ShowNotification(errorMsg, true);
+            }
+            finally
+            {
+                _sessionService.IsBusy = false;
+                _sessionService.StatusMessage = LocalizationService.Instance["Status.Ready"];
+            }
+        }
+
+        [RelayCommand]
+        private async Task FetchModels()
+        {
+             if (SelectedProfile == null) return;
+             var providerImpl = _providerFactory.CreateProvider(SelectedProfile.Provider);
+             if (providerImpl == null) return;
+
+             HelpText = LocalizationService.Instance["Agent.FetchingModels"];
+             _sessionService.IsBusy = true;
+             
+             try 
+             {
+                 await FetchModelsInternal(providerImpl);
+                 HelpText = string.Format(LocalizationService.Instance["Agent.ModelsLoaded"], SelectedProfile.AvailableModels.Count);
+                 _mainViewModel?.ShowNotification(LocalizationService.Instance["Notification.ModelsRefreshed"], false);
+             }
+             catch(Exception ex)
+             {
+                 HelpText = LocalizationService.Instance["Agent.FetchFailed"];
+                 _mainViewModel?.ShowNotification(string.Format(LocalizationService.Instance["Error.FetchFailed"], ex.Message), true);
+             }
+             finally
+             {
+                 _sessionService.IsBusy = false;
+             }
+        }
+
+        [RelayCommand]
+        private void SaveProfile()
+        {
+            SaveProfiles();
+            _mainViewModel?.ShowNotification(LocalizationService.Instance["Notification.ConfigSaved"], false);
+        }
+
+        private async Task FetchModelsInternal(IAIProvider provider)
+        {
+            // Persist current selection logic
+            var previousModel = SelectedProfile.SelectedModel;
+
+            var models = await provider.FetchModelsAsync(SelectedProfile.ApiKey, SelectedProfile.EndpointUrl);
+            
+            // Update on UI thread
+            Dispatcher.UIThread.Post(() => {
+                SelectedProfile.AvailableModels.Clear();
+                foreach (var m in models)
+                {
+                    SelectedProfile.AvailableModels.Add(m);
+                }
+                if (models.Count > 0)
+                {
+                    if (!string.IsNullOrEmpty(previousModel) && models.Contains(previousModel))
+                    {
+                        SelectedProfile.SelectedModel = previousModel;
+                    }
+                    else
+                    {
+                         SelectedProfile.SelectedModel = models[0];
+                    }
+                }
+            });
+            SaveProfiles(); 
+        }
+
+        private async Task PreloadModel(AgentProfile profile)
+        {
+             if (profile == null || string.IsNullOrEmpty(profile.SelectedModel)) return;
+             
+             if (profile.Provider == "Ollama" || profile.Provider == "LM Studio")
+             {
+                 HelpText = string.Format(LocalizationService.Instance["Agent.Help.Preloading"], profile.SelectedModel);
+                 
+                 // Update global status bar
+                 if (_mainViewModel != null)
+                 {
+                     _mainViewModel.StatusText = string.Format(LocalizationService.Instance["Status.LoadingModel"], profile.SelectedModel);
+                     _mainViewModel.StatusColor = "#FFC107"; // Amber/Loading
+                 }
+
+                 try 
+                 {
+                     var provider = _providerFactory.CreateProvider(profile.Provider);
+                     if (provider != null)
+                     {
+                         await provider.LoadModelAsync(profile.SelectedModel, profile.ApiKey, profile.EndpointUrl);
+                         HelpText = string.Format(LocalizationService.Instance["Agent.Help.ReadyLoaded"], profile.SelectedModel);
+                         
+                         if (_mainViewModel != null)
+                         {
+                             _mainViewModel.StatusText = LocalizationService.Instance["Status.Ready"];
+                             _mainViewModel.StatusColor = "#4CAF50"; // Green
+                         }
+                     }
+                 }
+                 catch (Exception ex)
+                 {
+                     HelpText = string.Format(LocalizationService.Instance["Agent.Help.LoadFailed"], ex.Message);
+                     if (_mainViewModel != null)
+                     {
+                         _mainViewModel.StatusText = LocalizationService.Instance["Status.LoadFailed"];
+                         _mainViewModel.StatusColor = "#F44336";
+                     }
+                 }
+             }
+        }
+
+        [RelayCommand]
+        private void OpenUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return;
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch { /* Ignore or show notification */ }
+        }
+
+        private string GetHelpUrl(string provider)
+        {
+            return provider switch
+            {
+                "OpenAI" => "https://platform.openai.com/api-keys",
+                "Anthropic" => "https://console.anthropic.com/settings/keys",
+                "DeepSeek" => "https://platform.deepseek.com/api_keys",
+                "Mistral" => "https://console.mistral.ai/api-keys/",
+                "Google Gemini" => "https://aistudio.google.com/app/apikey",
+                "Hugging Face" => "https://huggingface.co/settings/tokens",
+
+                "OpenRouter" => "https://openrouter.ai/keys",
+
+                "LM Studio" => "https://lmstudio.ai/docs/local-server",
+                "Ollama" => "https://ollama.com",
+                "Custom" => "https://platform.openai.com/docs/api-reference",
+                _ => "https://google.com/search?q=" + provider + "+api+key"
+            };
+        }
+
+        private string GetProviderDescription(string provider)
+        {
+            return provider switch
+            {
+                "Google Gemini" => "Generative AI from Google. High performance and large context window. Requires API Key.",
+
+                "Hugging Face" => "Access thousands of open-source models via the Hugging Face Inference API.",
+                "OpenRouter" => "A unified interface to access top LLMs from OpenAI, Anthropic, and more.",
+                "LM Studio" => "Connect to your local LM Studio server. Ensure the server is running on localhost:1234.",
+                "Ollama" => "Run powerful local models like Llama 3 on your machine. Ensure Ollama is running.",
+
+                "Custom" => "Connect to any OpenAI-compatible endpoint.",
+                _ => "Configure your agent details below."
+            };
+        }
+
+        private Geometry GetIconGeometry(string provider)
+        {
+             return provider switch
+             {
+                 "Google Gemini" => StreamGeometry.Parse("M12,2L14.5,9.5L22,12L14.5,14.5L12,22L9.5,14.5L2,12L9.5,9.5Z"), // Star/Sparkle
+
+                 "OpenRouter" => StreamGeometry.Parse("M12,2A10,10 0 1,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 1,0 20,12A8,8 0 0,0 12,4M12,6L16,10H13V14H11V10H8L12,6Z"), // Compass/Arrow
+                 "LM Studio" => StreamGeometry.Parse("M2,2H22V22H2V2M4,4V20H20V4H4M8,8H16V16H8V8Z"), // Generic Chip/Box fallback
+                 "Ollama" => StreamGeometry.Parse("M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M7,9.5C7,8.7 7.7,8 8.5,8C9.3,8 10,8.7 10,9.5C10,10.3 9.3,11 8.5,11C7.7,11 7,10.3 7,9.5M12,17.23C10.25,17.23 8.71,16.5 7.81,15.42L9.23,14C9.68,14.72 10.75,15.23 12,15.23C13.25,15.23 14.32,14.72 14.77,14L16.19,15.42C15.29,16.5 13.75,17.23 12,17.23M15.5,11C14.7,11 14,10.3 14,9.5C14,8.7 14.7,8 15.5,8C16.3,8 17,8.7 17,9.5C17,10.3 16.3,11 15.5,11Z"), // Emoji Face
+
+                 "Hugging Face" => StreamGeometry.Parse("M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M16,13H8V11H16V13Z"), // Simple Neutral Face
+                 _ => StreamGeometry.Parse("M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4")
+             };
+        }
+    }
+
+    public partial class AgentProfile : ObservableObject
+    {
+        [ObservableProperty]
+        private string _name = string.Empty;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsApiKeyNeeded))]
+        private string _provider = string.Empty;
+
+        [ObservableProperty]
+        private string _apiKey = string.Empty;
+
+        [ObservableProperty]
+        private string _endpointUrl = string.Empty;
+
+        [ObservableProperty]
+        private string _selectedModel = string.Empty;
+
+        [ObservableProperty]
+        private string _helpUrl = string.Empty;
+
+        [ObservableProperty]
+        private string _description = string.Empty;
+
+        public bool IsApiKeyNeeded => Provider != "Ollama" && Provider != "LM Studio" && Provider != "Custom";
+        
+        [ObservableProperty]
+        private Geometry _iconData = StreamGeometry.Parse("M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2");
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasCustomIcon))]
+        private Avalonia.Media.IImage? _iconBitmap;
+
+        public bool HasCustomIcon => IconBitmap != null;
+
+        [ObservableProperty]
+        private bool _visionOverride;
+
+        [ObservableProperty]
+        private int _maxTokens = 4096;
+
+        public ObservableCollection<string> AvailableModels { get; } = new();
+    }
+}

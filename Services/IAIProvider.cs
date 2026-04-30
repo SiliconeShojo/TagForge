@@ -1,0 +1,35 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace TagForge.Services
+{
+    public interface IAIProvider
+    {
+        string Name { get; }
+
+        /// <summary>
+        /// Validates the API Key and connection.
+        /// </summary>
+        Task<bool> PingAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default, System.Action<string, string, bool>? logger = null);
+
+        /// <summary>
+        /// Core generation logic.
+        /// </summary>
+        Task<string> GenerateAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, string? imagePath = null, int maxTokens = 4096, System.Threading.CancellationToken cancellationToken = default, System.Action<string, string, bool>? logger = null);
+
+        /// <summary>
+        /// Returns list of models (if API supports it, otherwise return static list).
+        /// </summary>
+        Task<List<string>> FetchModelsAsync(string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default, System.Action<string, string, bool>? logger = null);
+
+        /// <summary>
+        /// Generates response token by token. Returns (token, isReasoning).
+        /// </summary>
+        IAsyncEnumerable<(string Token, bool IsReasoning)> GenerateStreamingAsync(string systemPrompt, string userPrompt, string model, string apiKey, string baseUrl, string? imagePath = null, int maxTokens = 4096, System.Threading.CancellationToken cancellationToken = default, System.Action<string, string, bool>? logger = null);
+
+        /// <summary>
+        /// Pre-loads a model if supported by the provider.
+        /// </summary>
+        Task LoadModelAsync(string model, string apiKey, string baseUrl, System.Threading.CancellationToken cancellationToken = default);
+    }
+}
